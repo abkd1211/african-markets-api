@@ -44,7 +44,7 @@ export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
     tickers,
   };
 
-  cache.setSnapshot(snapshot);
+  cache.setGseSnapshot(snapshot);
   return snapshot;
 }
 

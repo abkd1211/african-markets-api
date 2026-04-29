@@ -1,34 +1,68 @@
-import { MarketSnapshot, CompanyProfile } from "../types/market.types";
+import {
+  MarketSnapshot,
+  CompanyProfile,
+  HistoricalData,
+  NgxSnapshot,
+} from "../types/market.types";
 
-interface CacheStore {
-  snapshot: MarketSnapshot | null;
-  profiles: Map<string, CompanyProfile>;
-  snapshotAge: number;
+const SNAPSHOT_TTL = 5 * 60 * 1000;      // 5 min
+const HISTORICAL_TTL = 60 * 60 * 1000;   // 1 hour
+const NGX_TTL = 5 * 60 * 1000;           // 5 min
+
+interface Entry<T> { data: T; ts: number; }
+
+function isStale<T>(entry: Entry<T> | null, ttl: number): boolean {
+  if (!entry) return true;
+  return Date.now() - entry.ts > ttl;
 }
 
-const store: CacheStore = {
-  snapshot: null,
-  profiles: new Map(),
-  snapshotAge: 0,
-};
+// GSE
+let gseSnapshot: Entry<MarketSnapshot> | null = null;
+const gseProfiles = new Map<string, Entry<CompanyProfile>>();
+const gseHistory = new Map<string, Entry<HistoricalData>>();
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// NGX
+let ngxSnapshot: Entry<NgxSnapshot> | null = null;
+const ngxHistory = new Map<string, Entry<HistoricalData>>();
 
 export const cache = {
-  setSnapshot(data: MarketSnapshot) {
-    store.snapshot = data;
-    store.snapshotAge = Date.now();
+  // GSE snapshot
+  setGseSnapshot(data: MarketSnapshot) {
+    gseSnapshot = { data, ts: Date.now() };
   },
-  getSnapshot(): MarketSnapshot | null {
-    return store.snapshot;
-  },
-  isStale(): boolean {
-    return Date.now() - store.snapshotAge > CACHE_TTL_MS;
-  },
+  getGseSnapshot() { return gseSnapshot?.data ?? null; },
+  isGseSnapshotStale() { return isStale(gseSnapshot, SNAPSHOT_TTL); },
+
+  // GSE profiles
   setProfile(symbol: string, data: CompanyProfile) {
-    store.profiles.set(symbol.toUpperCase(), data);
+    gseProfiles.set(symbol.toUpperCase(), { data, ts: Date.now() });
   },
-  getProfile(symbol: string): CompanyProfile | undefined {
-    return store.profiles.get(symbol.toUpperCase());
+  getProfile(symbol: string) {
+    return gseProfiles.get(symbol.toUpperCase())?.data ?? null;
+  },
+
+  // GSE history
+  setGseHistory(symbol: string, data: HistoricalData) {
+    gseHistory.set(symbol.toUpperCase(), { data, ts: Date.now() });
+  },
+  getGseHistory(symbol: string) {
+    const entry = gseHistory.get(symbol.toUpperCase());
+    return isStale(entry ?? null, HISTORICAL_TTL) ? null : entry?.data ?? null;
+  },
+
+  // NGX snapshot
+  setNgxSnapshot(data: NgxSnapshot) {
+    ngxSnapshot = { data, ts: Date.now() };
+  },
+  getNgxSnapshot() { return ngxSnapshot?.data ?? null; },
+  isNgxSnapshotStale() { return isStale(ngxSnapshot, NGX_TTL); },
+
+  // NGX history
+  setNgxHistory(symbol: string, data: HistoricalData) {
+    ngxHistory.set(symbol.toUpperCase(), { data, ts: Date.now() });
+  },
+  getNgxHistory(symbol: string) {
+    const entry = ngxHistory.get(symbol.toUpperCase());
+    return isStale(entry ?? null, HISTORICAL_TTL) ? null : entry?.data ?? null;
   },
 };

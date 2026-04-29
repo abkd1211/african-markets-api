@@ -6,11 +6,11 @@ import { Ticker } from "../types/market.types";
 const router = Router();
 
 // GET /api/v1/markets/gse/live
-router.get("/gse/live", async (req: Request, res: Response) => {
+router.get("/live", async (req: Request, res: Response) => {
   try {
-    const snapshot = cache.isStale() || !cache.getSnapshot()
+    const snapshot = cache.isGseSnapshotStale() || !cache.getGseSnapshot()
       ? await fetchGseSnapshot()
-      : cache.getSnapshot()!;
+      : cache.getGseSnapshot()!;
     res.json(snapshot);
   } catch (err) {
     res.status(502).json({ error: "Failed to fetch GSE data", detail: String(err) });
@@ -18,7 +18,7 @@ router.get("/gse/live", async (req: Request, res: Response) => {
 });
 
 // GET /api/v1/markets/gse/ticker/:symbol
-router.get("/gse/ticker/:symbol", async (req: Request, res: Response) => {
+router.get("/ticker/:symbol", async (req: Request, res: Response) => {
   try {
     const profile = await fetchGseProfile(req.params.symbol as string);
     res.json(profile);
@@ -28,11 +28,11 @@ router.get("/gse/ticker/:symbol", async (req: Request, res: Response) => {
 });
 
 // GET /api/v1/markets/gse/movers?limit=5
-router.get("/gse/movers", async (req: Request, res: Response) => {
+router.get("/movers", async (req: Request, res: Response) => {
   try {
-    const snapshot = cache.isStale() || !cache.getSnapshot()
+    const snapshot = cache.isGseSnapshotStale() || !cache.getGseSnapshot()
       ? await fetchGseSnapshot()
-      : cache.getSnapshot()!;
+      : cache.getGseSnapshot()!;
 
     const limit = Math.min(parseInt(req.query.limit as string) || 5, 20);
     const sorted = [...snapshot.tickers].filter(t => t.change !== 0);
@@ -59,11 +59,11 @@ router.get("/gse/movers", async (req: Request, res: Response) => {
 });
 
 // GET /api/v1/markets/gse/summary
-router.get("/gse/summary", async (req: Request, res: Response) => {
+router.get("/summary", async (req: Request, res: Response) => {
   try {
-    const snapshot = cache.isStale() || !cache.getSnapshot()
+    const snapshot = cache.isGseSnapshotStale() || !cache.getGseSnapshot()
       ? await fetchGseSnapshot()
-      : cache.getSnapshot()!;
+      : cache.getGseSnapshot()!;
 
     const active = snapshot.tickers.filter(t => t.volume > 0);
     const gainers = snapshot.tickers.filter(t => t.change > 0).length;
@@ -86,4 +86,4 @@ router.get("/gse/summary", async (req: Request, res: Response) => {
   }
 });
 
-export default router;
+export default router;
