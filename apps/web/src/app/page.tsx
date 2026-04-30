@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { api } from "@/lib/api";
 import { DashboardClient } from "@/components/dashboard-client";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const [gseSnapshot, gseSummary, gseMovers, ngxSnapshot] = await Promise.all([
