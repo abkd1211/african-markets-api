@@ -69,7 +69,7 @@ export async function fetchGseProfile(symbol: string): Promise<CompanyProfile> {
 
   const { data } = await axios.get<KwayisiEquity>(
     `${BASE}/equities/${symbol.toLowerCase()}`,
-    { timeout: 10000 }
+    { timeout: 25000 }
   );
 
   const profile: CompanyProfile = {

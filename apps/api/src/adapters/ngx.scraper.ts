@@ -148,7 +148,7 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   // NGX ticker URLs use .html extension: /ngx/mtnn.html
   const pageUrl = `${AFX_BASE}/ngx/${symbol.toLowerCase()}.html`;
   const { data: html } = await axios.get<string>(pageUrl, {
-    timeout: 15000,
+    timeout: 25000,
     headers: HEADERS,
   });
 

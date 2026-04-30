@@ -18,7 +18,7 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   try {
     const chartUrl = `${AFX_BASE}/chart/gse/${symbol.toLowerCase()}`;
     const { data: js } = await axios.get<string>(chartUrl, {
-      timeout: 10000,
+      timeout: 25000,
       headers: HEADERS,
     });
 

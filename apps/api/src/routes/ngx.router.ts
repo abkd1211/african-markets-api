@@ -3,14 +3,26 @@ import {
   fetchNgxSnapshot,
   fetchNgxSummary,
 } from "../adapters/ngx.scraper";
-import { NgxTicker } from "../types/market.types";
+import { NgxTicker, NgxSnapshot } from "../types/market.types";
 
 const router = Router();
+
+// Deduplicate parallel fetches to Kwayisi
+let ngxFetchPromise: Promise<NgxSnapshot> | null = null;
+
+async function getNgxSnapshot(): Promise<NgxSnapshot> {
+  if (ngxFetchPromise) return ngxFetchPromise;
+  
+  ngxFetchPromise = fetchNgxSnapshot().finally(() => {
+    ngxFetchPromise = null;
+  });
+  return ngxFetchPromise;
+}
 
 // GET /api/v1/markets/ngx/live
 router.get("/live", async (_req: Request, res: Response) => {
   try {
-    const snapshot = await fetchNgxSnapshot();
+    const snapshot = await getNgxSnapshot();
     res.json(snapshot);
   } catch (err) {
     res.status(502).json({ error: "Failed to fetch NGX data" });
@@ -30,7 +42,7 @@ router.get("/summary", async (_req: Request, res: Response) => {
 // GET /api/v1/markets/ngx/movers?limit=5
 router.get("/movers", async (req: Request, res: Response) => {
   try {
-    const snapshot = await fetchNgxSnapshot();
+    const snapshot = await getNgxSnapshot();
     const limit = Math.min(parseInt(req.query.limit as string) || 5, 20);
     const active = snapshot.tickers.filter(t => t.change !== 0);
 
