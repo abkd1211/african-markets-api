@@ -118,7 +118,6 @@ export function DashboardClient({
               style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
               <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
             </button>
-            <ThemeToggle />
           </div>
         </div>
       </header>
