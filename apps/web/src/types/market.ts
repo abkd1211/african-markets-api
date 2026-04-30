@@ -48,3 +48,51 @@ export interface CompanyProfile {
     website: string | null;
   };
 }
+
+export interface HistoricalDataPoint {
+  date: string;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number;
+  volume: number | null;
+}
+
+export interface HistoricalData {
+  symbol: string;
+  exchange: string;
+  currency: string;
+  range?: string;
+  data: HistoricalDataPoint[];
+}
+
+export interface NgxTicker {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  change_pct: number;
+  volume: number;
+  currency: "NGN";
+}
+
+export interface NgxSnapshot {
+  exchange: "NGX";
+  status: "OPEN" | "CLOSED";
+  last_updated: string;
+  tickers: NgxTicker[];
+}
+
+export interface NgxSummary {
+  exchange: "NGX";
+  status: "OPEN" | "CLOSED";
+  last_updated: string;
+  total_listed: number;
+  active_tickers: number;
+  gainers: number;
+  losers: number;
+  unchanged: number;
+  total_volume: number;
+  all_share_index: number | null;
+  index_change_pct: number | null;
+}

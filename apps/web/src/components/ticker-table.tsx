@@ -5,11 +5,16 @@ import type { Ticker } from "@/types/market";
 import { formatPrice, formatVolume, formatChange } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-interface Props { tickers: Ticker[]; onSelect: (symbol: string) => void; }
+interface Props {
+  tickers: Ticker[];
+  onSelect: (symbol: string) => void;
+  exchange: "GSE" | "NGX";
+}
 
 type SortKey = "symbol" | "price" | "change_pct" | "volume";
 
-export function TickerTable({ tickers, onSelect }: Props) {
+export function TickerTable({ tickers, onSelect, exchange }: Props) {
+  const currency = exchange === "NGX" ? "NGN" : "GHS";
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("volume");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -144,7 +149,7 @@ export function TickerTable({ tickers, onSelect }: Props) {
                   </td>
                   <td className="px-4 py-3 text-right tabular font-medium align-middle"
                     style={{ color: "var(--text-primary)" }}>
-                    {formatPrice(t.price)}
+                    {formatPrice(t.price, currency)}
                   </td>
                   <td className="px-4 py-3 align-middle">
                     <div className="flex justify-end">

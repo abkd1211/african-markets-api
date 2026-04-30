@@ -5,18 +5,20 @@ import { DashboardClient } from "@/components/dashboard-client";
 export const revalidate = 30;
 
 export default async function Page() {
-  const [snapshot, summary, movers] = await Promise.all([
+  const [gseSnapshot, gseSummary, gseMovers, ngxSnapshot] = await Promise.all([
     api.gse.live(),
     api.gse.summary(),
     api.gse.movers(),
+    api.ngx.live(),
   ]);
 
   return (
     <Suspense>
       <DashboardClient
-        initialSnapshot={snapshot}
-        initialSummary={summary}
-        initialMovers={movers}
+        initialGseSnapshot={gseSnapshot}
+        initialGseSummary={gseSummary}
+        initialGseMovers={gseMovers}
+        initialNgxSnapshot={ngxSnapshot}
       />
     </Suspense>
   );

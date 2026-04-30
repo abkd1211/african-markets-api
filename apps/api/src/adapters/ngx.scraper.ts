@@ -27,10 +27,13 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
   const cached = cache.getNgxSnapshot();
   if (cached && !cache.isNgxSnapshotStale()) return cached;
 
-  const { data: html } = await axios.get<string>(`${AFX_BASE}/ngx/`, {
-    timeout: 15000,
-    headers: HEADERS,
-  });
+  // Fetch both pages in parallel
+  const [page1, page2] = await Promise.all([
+    axios.get<string>(`${AFX_BASE}/ngx/`, { timeout: 15000, headers: HEADERS }),
+    axios.get<string>(`${AFX_BASE}/ngx/?page=2`, { timeout: 15000, headers: HEADERS }),
+  ]);
+
+  const html = page1.data + page2.data;
 
   const $ = cheerio.load(html);
   const tickers: NgxTicker[] = [];
