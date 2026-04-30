@@ -16,13 +16,28 @@ function isStale<T>(entry: Entry<T> | null, ttl: number): boolean {
   return Date.now() - entry.ts > ttl;
 }
 
+// Initial empty states to prevent blocking on first run
+const emptyGse: MarketSnapshot = {
+  exchange: "GSE",
+  status: "CLOSED",
+  last_updated: new Date().toISOString(),
+  tickers: []
+};
+
+const emptyNgx: NgxSnapshot = {
+  exchange: "NGX",
+  status: "CLOSED",
+  last_updated: new Date().toISOString(),
+  tickers: []
+};
+
 // GSE
-let gseSnapshot: Entry<MarketSnapshot> | null = null;
+let gseSnapshot: Entry<MarketSnapshot> = { data: emptyGse, ts: 0 };
 const gseProfiles = new Map<string, Entry<CompanyProfile>>();
 const gseHistory = new Map<string, Entry<HistoricalData>>();
 
 // NGX
-let ngxSnapshot: Entry<NgxSnapshot> | null = null;
+let ngxSnapshot: Entry<NgxSnapshot> = { data: emptyNgx, ts: 0 };
 const ngxHistory = new Map<string, Entry<HistoricalData>>();
 
 export const cache = {
@@ -30,7 +45,7 @@ export const cache = {
   setGseSnapshot(data: MarketSnapshot) {
     gseSnapshot = { data, ts: Date.now() };
   },
-  getGseSnapshot() { return gseSnapshot?.data ?? null; },
+  getGseSnapshot() { return gseSnapshot.data; },
   isGseSnapshotStale() { return isStale(gseSnapshot, SNAPSHOT_TTL); },
 
   // GSE profiles
@@ -54,7 +69,7 @@ export const cache = {
   setNgxSnapshot(data: NgxSnapshot) {
     ngxSnapshot = { data, ts: Date.now() };
   },
-  getNgxSnapshot() { return ngxSnapshot?.data ?? null; },
+  getNgxSnapshot() { return ngxSnapshot.data; },
   isNgxSnapshotStale() { return isStale(ngxSnapshot, NGX_TTL); },
 
   // NGX history

@@ -15,21 +15,11 @@ async function getNgxSnapshot(): Promise<NgxSnapshot> {
   const cached = cache.getNgxSnapshot();
   const isStale = cache.isNgxSnapshotStale();
 
-  if (cached && !isStale) return cached;
-
-  if (cached && isStale) {
-    if (!ngxFetchPromise) {
-      ngxFetchPromise = fetchNgxSnapshot().finally(() => { ngxFetchPromise = null; });
-    }
-    return cached;
+  if (isStale && !ngxFetchPromise) {
+    ngxFetchPromise = fetchNgxSnapshot().finally(() => { ngxFetchPromise = null; });
   }
 
-  if (ngxFetchPromise) return ngxFetchPromise;
-  
-  ngxFetchPromise = fetchNgxSnapshot().finally(() => {
-    ngxFetchPromise = null;
-  });
-  return ngxFetchPromise;
+  return cached;
 }
 
 // GET /api/v1/markets/ngx/live
