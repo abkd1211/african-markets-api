@@ -14,6 +14,7 @@ import { MarketStatus } from "./market-status";
 import { StatCard } from "./stat-card";
 import { TickerTable } from "./ticker-table";
 import { ExchangeTabs } from "./exchange-tabs";
+import { Logo } from "./logo";
 import { api } from "@/lib/api";
 import { formatVolume } from "@/lib/utils";
 
@@ -100,10 +101,7 @@ export function DashboardClient({
         style={{ borderColor: "var(--border)", background: "rgba(13,12,10,0.85)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "var(--gold-glow)", border: "1px solid rgba(245,158,11,0.3)" }}>
-              <span className="text-xs font-bold gold-text">AM</span>
-            </div>
+            <Logo size={32} />
             <span className="font-semibold text-sm tracking-tight"
               style={{ color: "var(--text-primary)" }}>
               African<span className="gold-text">Markets</span>
