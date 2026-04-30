@@ -29,8 +29,8 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
 
   // Fetch both pages in parallel
   const [page1, page2] = await Promise.all([
-    axios.get<string>(`${AFX_BASE}/ngx/`, { timeout: 15000, headers: HEADERS }),
-    axios.get<string>(`${AFX_BASE}/ngx/?page=2`, { timeout: 15000, headers: HEADERS }),
+    axios.get<string>(`${AFX_BASE}/ngx/`, { timeout: 30000, headers: HEADERS }),
+    axios.get<string>(`${AFX_BASE}/ngx/?page=2`, { timeout: 30000, headers: HEADERS }),
   ]);
 
   const html = page1.data + page2.data;
@@ -125,7 +125,7 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   try {
     const chartUrl = `${AFX_BASE}/chart/ngx/${symbol.toLowerCase()}`;
     const { data } = await axios.get(chartUrl, {
-      timeout: 10000,
+      timeout: 30000,
       headers: { ...HEADERS, Accept: "application/json, text/html" },
     });
 
@@ -148,7 +148,7 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   // NGX ticker URLs use .html extension: /ngx/mtnn.html
   const pageUrl = `${AFX_BASE}/ngx/${symbol.toLowerCase()}.html`;
   const { data: html } = await axios.get<string>(pageUrl, {
-    timeout: 25000,
+    timeout: 30000,
     headers: HEADERS,
   });
 

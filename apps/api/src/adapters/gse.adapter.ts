@@ -25,7 +25,7 @@ interface KwayisiLiveTicker {
 
 export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
   const { data } = await axios.get<KwayisiLiveTicker[]>(`${BASE}/live`, {
-    timeout: 10000,
+    timeout: 30000,
   });
 
   const tickers: Ticker[] = data.map((t) => ({
@@ -69,7 +69,7 @@ export async function fetchGseProfile(symbol: string): Promise<CompanyProfile> {
 
   const { data } = await axios.get<KwayisiEquity>(
     `${BASE}/equities/${symbol.toLowerCase()}`,
-    { timeout: 25000 }
+    { timeout: 30000 }
   );
 
   const profile: CompanyProfile = {

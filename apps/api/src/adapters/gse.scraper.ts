@@ -18,7 +18,7 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   try {
     const chartUrl = `${AFX_BASE}/chart/gse/${symbol.toLowerCase()}`;
     const { data: js } = await axios.get<string>(chartUrl, {
-      timeout: 25000,
+      timeout: 30000,
       headers: HEADERS,
     });
 
@@ -40,7 +40,7 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   // Fallback: [data-hist] table — last 10 trading days only
   const pageUrl = `${AFX_BASE}/gse/${symbol.toLowerCase()}.html`;
   const { data: html } = await axios.get<string>(pageUrl, {
-    timeout: 15000,
+    timeout: 30000,
     headers: HEADERS,
   });
 
