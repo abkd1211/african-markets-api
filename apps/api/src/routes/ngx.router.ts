@@ -11,6 +11,18 @@ const router = Router();
 let ngxFetchPromise: Promise<NgxSnapshot> | null = null;
 
 async function getNgxSnapshot(): Promise<NgxSnapshot> {
+  const cached = cache.getNgxSnapshot();
+  const isStale = cache.isNgxSnapshotStale();
+
+  if (cached && !isStale) return cached;
+
+  if (cached && isStale) {
+    if (!ngxFetchPromise) {
+      ngxFetchPromise = fetchNgxSnapshot().finally(() => { ngxFetchPromise = null; });
+    }
+    return cached;
+  }
+
   if (ngxFetchPromise) return ngxFetchPromise;
   
   ngxFetchPromise = fetchNgxSnapshot().finally(() => {

@@ -9,16 +9,27 @@ const router = Router();
 let gseFetchPromise: Promise<MarketSnapshot> | null = null;
 
 async function getGseSnapshot(): Promise<MarketSnapshot> {
+  const cached = cache.getGseSnapshot();
+  const isStale = cache.isGseSnapshotStale();
+
+  // If we have data and it's not stale, return it
+  if (cached && !isStale) return cached;
+
+  // If we have data but it IS stale, return it immediately BUT trigger a background refresh
+  if (cached && isStale) {
+    if (!gseFetchPromise) {
+      gseFetchPromise = fetchGseSnapshot().finally(() => { gseFetchPromise = null; });
+    }
+    return cached;
+  }
+
+  // If we have NO data at all (first run), we must wait
   if (gseFetchPromise) return gseFetchPromise;
   
-  if (cache.isGseSnapshotStale() || !cache.getGseSnapshot()) {
-    gseFetchPromise = fetchGseSnapshot().finally(() => {
-      gseFetchPromise = null;
-    });
-    return gseFetchPromise;
-  }
-  
-  return cache.getGseSnapshot()!;
+  gseFetchPromise = fetchGseSnapshot().finally(() => {
+    gseFetchPromise = null;
+  });
+  return gseFetchPromise;
 }
 
 // GET /api/v1/markets/gse/live

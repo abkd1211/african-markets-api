@@ -29,8 +29,8 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
 
   // Fetch both pages in parallel
   const [page1, page2] = await Promise.all([
-    axios.get<string>(`${AFX_BASE}/ngx/`, { timeout: 30000, headers: HEADERS }),
-    axios.get<string>(`${AFX_BASE}/ngx/?page=2`, { timeout: 30000, headers: HEADERS }),
+    axios.get<string>(`${AFX_BASE}/ngx/`, { timeout: 20000, headers: HEADERS }),
+    axios.get<string>(`${AFX_BASE}/ngx/?page=2`, { timeout: 20000, headers: HEADERS }),
   ]);
 
   const html = page1.data + page2.data;

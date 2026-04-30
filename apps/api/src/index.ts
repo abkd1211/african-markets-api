@@ -39,15 +39,15 @@ app.get("/health", (_, res) => {
   });
 });
 
-// GSE: poll every 5 min on weekdays 10:00–15:00 GMT
-cron.schedule("*/5 10-15 * * 1-5", async () => {
+// GSE: poll every 15 min 24/7 to keep cache warm
+cron.schedule("*/15 * * * *", async () => {
   console.log("[cron] Polling GSE...");
   try { await fetchGseSnapshot(); console.log("[cron] GSE updated."); }
   catch (e) { console.error("[cron] GSE failed:", e); }
 });
 
-// NGX: poll every 5 min on weekdays 08:30–13:30 UTC
-cron.schedule("*/5 8-14 * * 1-5", async () => {
+// NGX: poll every 15 min 24/7 to keep cache warm
+cron.schedule("*/15 * * * *", async () => {
   console.log("[cron] Polling NGX...");
   try { await fetchNgxSnapshot(); console.log("[cron] NGX updated."); }
   catch (e) { console.error("[cron] NGX failed:", e); }
