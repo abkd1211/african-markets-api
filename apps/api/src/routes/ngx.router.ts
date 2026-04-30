@@ -3,6 +3,7 @@ import {
   fetchNgxSnapshot,
   fetchNgxSummary,
 } from "../adapters/ngx.scraper";
+import { cache } from "../cache/market.cache";
 import { NgxTicker, NgxSnapshot } from "../types/market.types";
 
 const router = Router();
