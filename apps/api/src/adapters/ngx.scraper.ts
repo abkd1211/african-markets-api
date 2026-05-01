@@ -33,8 +33,8 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
   try {
     // Fetch both pages in parallel
     const [page1, page2] = await Promise.all([
-      axios.get<string>(`${AFX_BASE}/ngx/`, { timeout: 20000, headers: HEADERS }),
-      axios.get<string>(`${AFX_BASE}/ngx/?page=2`, { timeout: 20000, headers: HEADERS }),
+      axios.get<string>(`${AFX_BASE}/ngx/`, { timeout: 60000, headers: HEADERS, httpsAgent: new (require("https")).Agent({ family: 4 }) }),
+      axios.get<string>(`${AFX_BASE}/ngx/?page=2`, { timeout: 60000, headers: HEADERS, httpsAgent: new (require("https")).Agent({ family: 4 }) }),
     ]);
 
     const html = page1.data + page2.data;
@@ -137,8 +137,9 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   try {
     const chartUrl = `${AFX_BASE}/chart/ngx/${symbol.toLowerCase()}`;
     const { data } = await axios.get(chartUrl, {
-      timeout: 30000,
+      timeout: 60000,
       headers: { ...HEADERS, Accept: "application/json, text/html" },
+      httpsAgent: new (require("https")).Agent({ family: 4 }),
     });
 
     const points = parseHighchartsScript(data);
@@ -160,8 +161,9 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   // NGX ticker URLs use .html extension: /ngx/mtnn.html
   const pageUrl = `${AFX_BASE}/ngx/${symbol.toLowerCase()}.html`;
   const { data: html } = await axios.get<string>(pageUrl, {
-    timeout: 30000,
+    timeout: 60000,
     headers: HEADERS,
+    httpsAgent: new (require("https")).Agent({ family: 4 }),
   });
 
   const $ = cheerio.load(html);

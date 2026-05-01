@@ -27,13 +27,14 @@ export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
   console.log("[GSE] Starting fetch...");
   try {
     const { data } = await axios.get<KwayisiLiveTicker[]>(`${BASE}/live`, {
-      timeout: 20000,
+      timeout: 60000,
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "application/json, text/plain, */*",
         "Accept-Language": "en-US,en;q=0.9",
         "Referer": "https://dev.kwayisi.org/",
       },
+      httpsAgent: new (require("https")).Agent({ family: 4 }),
     });
     console.log(`[GSE] Fetched ${data.length} tickers`);
     
@@ -83,7 +84,10 @@ export async function fetchGseProfile(symbol: string): Promise<CompanyProfile> {
 
   const { data } = await axios.get<KwayisiEquity>(
     `${BASE}/equities/${symbol.toLowerCase()}`,
-    { timeout: 30000 }
+    { 
+      timeout: 60000,
+      httpsAgent: new (require("https")).Agent({ family: 4 }),
+    }
   );
 
   const profile: CompanyProfile = {
