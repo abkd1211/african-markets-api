@@ -2,7 +2,7 @@ import axios from "axios";
 import { MarketSnapshot, Ticker, CompanyProfile } from "../types/market.types";
 import { cache } from "../cache/market.cache";
 
-const BASE = process.env.GSE_API_BASE!;
+const BASE = process.env.GSE_API_BASE || "https://dev.kwayisi.org/apis/gse";
 
 // GSE trading hours: 10:00–15:00 GMT, weekdays only
 function isGseOpen(): boolean {

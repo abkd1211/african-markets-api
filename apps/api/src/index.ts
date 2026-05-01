@@ -82,6 +82,6 @@ async function bootstrap() {
 
 bootstrap().catch(err => console.error("[startup] Bootstrap error:", err));
 
-app.listen(PORT, () => {
-  console.log(`African Markets API → http://localhost:${PORT}`);
+app.listen(PORT as number, "0.0.0.0", () => {
+  console.log(`African Markets API → http://0.0.0.0:${PORT}`);
 });

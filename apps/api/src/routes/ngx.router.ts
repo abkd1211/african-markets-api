@@ -16,7 +16,13 @@ async function getNgxSnapshot(): Promise<NgxSnapshot> {
   const isStale = cache.isNgxSnapshotStale();
 
   if (isStale && !ngxFetchPromise) {
-    ngxFetchPromise = fetchNgxSnapshot().finally(() => { ngxFetchPromise = null; });
+    ngxFetchPromise = (async () => {
+      try {
+        await fetchNgxSnapshot();
+      } catch (err) {
+        console.error("[NGX] Background refresh failed:", err instanceof Error ? err.message : String(err));
+      }
+    })().finally(() => { ngxFetchPromise = null; }) as any;
   }
 
   return cached;
