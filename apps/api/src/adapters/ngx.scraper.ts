@@ -1,4 +1,4 @@
-import { gotScraping } from "got-scraping";
+const gotScrapingPromise = new Function("return import('got-scraping')")().then((m: any) => m.gotScraping);
 import * as cheerio from "cheerio";
 import {
   NgxSnapshot,
@@ -32,6 +32,7 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
   console.log("[NGX] Starting fetch...");
   try {
     // Fetch both pages in parallel using got-scraping
+    const gotScraping = await gotScrapingPromise;
     const [page1, page2] = await Promise.all([
       gotScraping.get(`${AFX_BASE}/ngx/`, { timeout: { request: 60000 } }),
       gotScraping.get(`${AFX_BASE}/ngx/?page=2`, { timeout: { request: 60000 } }),
@@ -115,6 +116,7 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
 
   // Try chart JSON endpoint first
   try {
+    const gotScraping = await gotScrapingPromise;
     const chartUrl = `${AFX_BASE}/chart/ngx/${symbol.toLowerCase()}`;
     const response = await gotScraping.get(chartUrl, { timeout: { request: 60000 } });
     const data = response.body;
@@ -136,6 +138,7 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
 
   // Fallback: scrape data-hist table from ticker page
   // NGX ticker URLs use .html extension: /ngx/mtnn.html
+  const gotScraping = await gotScrapingPromise;
   const pageUrl = `${AFX_BASE}/ngx/${symbol.toLowerCase()}.html`;
   const response = await gotScraping.get(pageUrl, { timeout: { request: 60000 } });
   const html = response.body;

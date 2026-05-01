@@ -1,4 +1,4 @@
-import { gotScraping } from "got-scraping";
+const gotScrapingPromise = new Function("return import('got-scraping')")().then((m: any) => m.gotScraping);
 import * as cheerio from "cheerio";
 import { HistoricalData, HistoricalDataPoint } from "../types/market.types";
 import { cache } from "../cache/market.cache";
@@ -13,6 +13,7 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
 
   // Primary: chart JS endpoint — full history since IPO
   try {
+    const gotScraping = await gotScrapingPromise;
     const chartUrl = `${AFX_BASE}/chart/gse/${symbol.toLowerCase()}`;
     const response = await gotScraping.get(chartUrl, { timeout: { request: 60000 } });
     const js = response.body;
@@ -33,6 +34,7 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   }
 
   // Fallback: [data-hist] table — last 10 trading days only
+  const gotScraping = await gotScrapingPromise;
   const pageUrl = `${AFX_BASE}/gse/${symbol.toLowerCase()}.html`;
   const response = await gotScraping.get(pageUrl, { timeout: { request: 60000 } });
   const html = response.body;

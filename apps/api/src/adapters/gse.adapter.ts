@@ -1,4 +1,4 @@
-import { gotScraping } from "got-scraping";
+const gotScrapingPromise = new Function("return import('got-scraping')")().then((m: any) => m.gotScraping);
 import { MarketSnapshot, Ticker, CompanyProfile } from "../types/market.types";
 import { cache } from "../cache/market.cache";
 
@@ -26,6 +26,7 @@ interface KwayisiLiveTicker {
 export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
   console.log("[GSE] Starting fetch...");
   try {
+    const gotScraping = await gotScrapingPromise;
     const response = await gotScraping.get(`${BASE}/live`, {
       responseType: "json",
       timeout: { request: 60000 },
@@ -78,6 +79,7 @@ export async function fetchGseProfile(symbol: string): Promise<CompanyProfile> {
   const cached = cache.getProfile(symbol);
   if (cached) return cached;
 
+  const gotScraping = await gotScrapingPromise;
   const response = await gotScraping.get(`${BASE}/equities/${symbol.toLowerCase()}`, {
       responseType: "json",
       timeout: { request: 60000 },
