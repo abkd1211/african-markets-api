@@ -27,72 +27,82 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
   const cached = cache.getNgxSnapshot();
   if (cached && !cache.isNgxSnapshotStale()) return cached;
 
-  // Fetch both pages in parallel
-  const [page1, page2] = await Promise.all([
-    axios.get<string>(`${AFX_BASE}/ngx/`, { timeout: 20000, headers: HEADERS }),
-    axios.get<string>(`${AFX_BASE}/ngx/?page=2`, { timeout: 20000, headers: HEADERS }),
-  ]);
+  console.log("[NGX] Starting fetch...");
+  try {
+    // Fetch both pages in parallel
+    const [page1, page2] = await Promise.all([
+      axios.get<string>(`${AFX_BASE}/ngx/`, { timeout: 20000, headers: HEADERS }),
+      axios.get<string>(`${AFX_BASE}/ngx/?page=2`, { timeout: 20000, headers: HEADERS }),
+    ]);
 
-  const html = page1.data + page2.data;
+    const html = page1.data + page2.data;
+    console.log("[NGX] Fetched HTML, parsing...");
 
-  const $ = cheerio.load(html);
-  const tickers: NgxTicker[] = [];
+    const $ = cheerio.load(html);
+    const tickers: NgxTicker[] = [];
 
-  // The main ticker table is inside div.t > table
-  // Columns: Ticker | Name | Volume | Price | Change
-  // Rows with class="ss" are suspended — still include them, just no volume/change
-  $("div.t table tbody tr").each((_, row) => {
-    const cells = $(row).find("td");
-    if (cells.length < 4) return;
+    // The main ticker table is inside div.t > table
+    // Columns: Ticker | Name | Volume | Price | Change
+    // Rows with class="ss" are suspended — still include them, just no volume/change
+    $("div.t table tbody tr").each((_, row) => {
+      const cells = $(row).find("td");
+      if (cells.length < 4) return;
 
-    // Symbol is in an <a> tag inside first td
-    const symbol = $(cells[0]).find("a").text().trim();
-    const name = $(cells[1]).find("a").text().trim();
-    const volumeText = $(cells[2]).text().trim().replace(/,/g, "");
-    const priceText = $(cells[3]).text().trim().replace(/,/g, "");
-    const changeText = $(cells[4])?.text().trim().replace(/,/g, "") ?? "0";
+      // Symbol is in an <a> tag inside first td
+      const symbol = $(cells[0]).find("a").text().trim();
+      const name = $(cells[1]).find("a").text().trim();
+      const volumeText = $(cells[2]).text().trim().replace(/,/g, "");
+      const priceText = $(cells[3]).text().trim().replace(/,/g, "");
+      const changeText = $(cells[4])?.text().trim().replace(/,/g, "") ?? "0";
 
-    if (!symbol) return;
+      if (!symbol) return;
 
-    const price = parseFloat(priceText);
-    if (isNaN(price)) return;
+      const price = parseFloat(priceText);
+      if (isNaN(price)) return;
 
-    const change = parseFloat(changeText.replace("+", "")) || 0;
-    const prevPrice = price - change;
-    const change_pct = prevPrice > 0
-      ? parseFloat(((change / prevPrice) * 100).toFixed(2))
-      : 0;
+      const change = parseFloat(changeText.replace("+", "")) || 0;
+      const prevPrice = price - change;
+      const change_pct = prevPrice > 0
+        ? parseFloat(((change / prevPrice) * 100).toFixed(2))
+        : 0;
 
-    tickers.push({
-      symbol,
-      name: name || symbol,
-      price,
-      change,
-      change_pct,
-      volume: parseInt(volumeText, 10) || 0,
-      currency: "NGN",
+      tickers.push({
+        symbol,
+        name: name || symbol,
+        price,
+        change,
+        change_pct,
+        volume: parseInt(volumeText, 10) || 0,
+        currency: "NGN",
+      });
     });
-  });
 
-  // Parse ASI from the index summary table (first table, class=c)
-  let asi: number | null = null;
-  let asiChangePct: number | null = null;
+    console.log(`[NGX] Parsed ${tickers.length} tickers`);
 
-  $("table.c tbody tr td").first().each((_, el) => {
-    const text = $(el).text().trim().replace(/,/g, "");
-    const match = text.match(/([\d.]+)/);
-    if (match) asi = parseFloat(match[1]);
-  });
+    // Parse ASI from the index summary table (first table, class=c)
+    let asi: number | null = null;
+    let asiChangePct: number | null = null;
 
-  const snapshot: NgxSnapshot = {
-    exchange: "NGX",
-    status: isNgxOpen() ? "OPEN" : "CLOSED",
-    last_updated: new Date().toISOString(),
-    tickers,
-  };
+    $("table.c tbody tr td").first().each((_, el) => {
+      const text = $(el).text().trim().replace(/,/g, "");
+      const match = text.match(/([\d.]+)/);
+      if (match) asi = parseFloat(match[1]);
+    });
 
-  if (tickers.length > 0) cache.setNgxSnapshot(snapshot);
-  return snapshot;
+    const snapshot: NgxSnapshot = {
+      exchange: "NGX",
+      status: isNgxOpen() ? "OPEN" : "CLOSED",
+      last_updated: new Date().toISOString(),
+      tickers,
+    };
+
+    if (tickers.length > 0) cache.setNgxSnapshot(snapshot);
+    console.log(`[NGX] Cached snapshot with ${tickers.length} tickers`);
+    return snapshot;
+  } catch (err) {
+    console.error("[NGX] Fetch failed:", err instanceof Error ? err.message : String(err));
+    throw err;
+  }
 }
 
 export async function fetchNgxSummary() {

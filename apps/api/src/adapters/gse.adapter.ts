@@ -24,29 +24,37 @@ interface KwayisiLiveTicker {
 }
 
 export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
-  const { data } = await axios.get<KwayisiLiveTicker[]>(`${BASE}/live`, {
-    timeout: 20000,
-    headers: { "User-Agent": "AfricanMarkets/1.0" },
-  });
+  console.log("[GSE] Starting fetch...");
+  try {
+    const { data } = await axios.get<KwayisiLiveTicker[]>(`${BASE}/live`, {
+      timeout: 20000,
+      headers: { "User-Agent": "AfricanMarkets/1.0" },
+    });
+    console.log(`[GSE] Fetched ${data.length} tickers`);
+    
+    const tickers: Ticker[] = data.map((t) => ({
+      symbol: t.name,
+      price: t.price,
+      change: t.change,
+      change_pct: t.price > 0 ? parseFloat(((t.change / (t.price - t.change)) * 100).toFixed(2)) : 0,
+      volume: t.volume,
+      currency: "GHS",
+    }));
 
-  const tickers: Ticker[] = data.map((t) => ({
-    symbol: t.name,
-    price: t.price,
-    change: t.change,
-    change_pct: t.price > 0 ? parseFloat(((t.change / (t.price - t.change)) * 100).toFixed(2)) : 0,
-    volume: t.volume,
-    currency: "GHS",
-  }));
+    const snapshot: MarketSnapshot = {
+      exchange: "GSE",
+      status: isGseOpen() ? "OPEN" : "CLOSED",
+      last_updated: new Date().toISOString(),
+      tickers,
+    };
 
-  const snapshot: MarketSnapshot = {
-    exchange: "GSE",
-    status: isGseOpen() ? "OPEN" : "CLOSED",
-    last_updated: new Date().toISOString(),
-    tickers,
-  };
-
-  cache.setGseSnapshot(snapshot);
-  return snapshot;
+    cache.setGseSnapshot(snapshot);
+    console.log(`[GSE] Cached snapshot with ${tickers.length} tickers`);
+    return snapshot;
+  } catch (err) {
+    console.error("[GSE] Fetch failed:", err instanceof Error ? err.message : String(err));
+    throw err;
+  }
 }
 
 interface KwayisiEquity {
