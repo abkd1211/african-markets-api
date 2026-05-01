@@ -31,12 +31,11 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
 
   console.log("[NGX] Starting fetch...");
   try {
-    // Fetch both pages in parallel using got-scraping
+    // Fetch both pages sequentially to avoid triggering Kwayisi rate limits
     const gotScraping = await gotScrapingPromise;
-    const [page1, page2] = await Promise.all([
-      gotScraping.get(`${AFX_BASE}/ngx/`, { timeout: { request: 60000 } }),
-      gotScraping.get(`${AFX_BASE}/ngx/?page=2`, { timeout: { request: 60000 } }),
-    ]);
+    const page1 = await gotScraping.get(`${AFX_BASE}/ngx/`, { timeout: { request: 60000 } });
+    await new Promise(r => setTimeout(r, 1500)); // 1.5s delay
+    const page2 = await gotScraping.get(`${AFX_BASE}/ngx/?page=2`, { timeout: { request: 60000 } });
 
     const html = page1.body + page2.body;
     console.log("[NGX] Fetched HTML, parsing...");

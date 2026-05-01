@@ -46,8 +46,8 @@ cron.schedule("*/15 * * * *", async () => {
   catch (e) { console.error("[cron] GSE failed:", e); }
 });
 
-// NGX: poll every 15 min 24/7 to keep cache warm
-cron.schedule("*/15 * * * *", async () => {
+// NGX: poll every 15 min 24/7 (offset by 2 mins to avoid rate limit overlap with GSE)
+cron.schedule("2-59/15 * * * *", async () => {
   console.log("[cron] Polling NGX...");
   try { await fetchNgxSnapshot(); console.log("[cron] NGX updated."); }
   catch (e) { console.error("[cron] NGX failed:", e); }
@@ -72,10 +72,10 @@ async function bootstrap() {
     console.error(`[startup] ${name} failed after ${maxRetries} attempts.`);
   }
 
-  await Promise.all([
-    retryFetch("GSE", () => fetchGseSnapshot()),
-    retryFetch("NGX", () => fetchNgxSnapshot()),
-  ]);
+  // Run sequentially with delays to prevent triggering rate limits
+  await retryFetch("GSE", () => fetchGseSnapshot());
+  await new Promise(r => setTimeout(r, 3000)); // 3s delay
+  await retryFetch("NGX", () => fetchNgxSnapshot());
   
   console.log("[startup] Data initialization complete.");
 }
