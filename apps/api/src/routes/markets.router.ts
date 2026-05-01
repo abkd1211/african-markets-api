@@ -14,7 +14,11 @@ async function getGseSnapshot(): Promise<MarketSnapshot> {
 
   // If stale (includes ts=0 on startup), trigger background refresh
   if (isStale && !gseFetchPromise) {
-    gseFetchPromise = fetchGseSnapshot().finally(() => { gseFetchPromise = null; });
+    gseFetchPromise = fetchGseSnapshot()
+      .catch((err) => {
+        console.error("[GSE] Background refresh failed:", err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => { gseFetchPromise = null; });
   }
 
   return cached;
@@ -95,4 +99,4 @@ router.get("/summary", async (req: Request, res: Response) => {
   }
 });
 
-export default router;
+export default router;
