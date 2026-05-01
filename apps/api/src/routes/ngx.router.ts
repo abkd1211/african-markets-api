@@ -1,7 +1,6 @@
 import { Router, Request, Response } from "express";
 import {
   fetchNgxSnapshot,
-  fetchNgxSummary,
 } from "../adapters/ngx.scraper";
 import { cache } from "../cache/market.cache";
 import { NgxTicker, NgxSnapshot } from "../types/market.types";
@@ -21,8 +20,15 @@ async function getNgxSnapshot(): Promise<NgxSnapshot> {
         await fetchNgxSnapshot();
       } catch (err) {
         console.error("[NGX] Background refresh failed:", err instanceof Error ? err.message : String(err));
+        throw err;
       }
     })().finally(() => { ngxFetchPromise = null; }) as any;
+  }
+
+  // If cache is empty and we are fetching, wait for it to finish
+  if (cached.tickers.length === 0 && ngxFetchPromise) {
+    await ngxFetchPromise;
+    return cache.getNgxSnapshot();
   }
 
   return cached;
@@ -41,7 +47,25 @@ router.get("/live", async (_req: Request, res: Response) => {
 // GET /api/v1/markets/ngx/summary
 router.get("/summary", async (_req: Request, res: Response) => {
   try {
-    const summary = await fetchNgxSummary();
+    const snapshot = await getNgxSnapshot();
+    const gainers = snapshot.tickers.filter(t => t.change > 0).length;
+    const losers = snapshot.tickers.filter(t => t.change < 0).length;
+    const active = snapshot.tickers.filter(t => t.volume > 0).length;
+    const totalVolume = snapshot.tickers.reduce((s, t) => s + t.volume, 0);
+
+    const summary = {
+      exchange: "NGX",
+      status: snapshot.status,
+      last_updated: snapshot.last_updated,
+      total_listed: snapshot.tickers.length,
+      active_tickers: active,
+      gainers,
+      losers,
+      unchanged: snapshot.tickers.length - gainers - losers,
+      total_volume: totalVolume,
+      all_share_index: null,
+      index_change_pct: null,
+    };
     res.json(summary);
   } catch (err) {
     res.status(502).json({ error: "Failed to fetch NGX summary" });

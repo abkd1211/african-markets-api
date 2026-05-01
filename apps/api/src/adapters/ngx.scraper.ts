@@ -107,27 +107,7 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
   }
 }
 
-export async function fetchNgxSummary() {
-  const snapshot = await fetchNgxSnapshot();
-  const gainers = snapshot.tickers.filter(t => t.change > 0).length;
-  const losers = snapshot.tickers.filter(t => t.change < 0).length;
-  const active = snapshot.tickers.filter(t => t.volume > 0).length;
-  const totalVolume = snapshot.tickers.reduce((s, t) => s + t.volume, 0);
 
-  return {
-    exchange: "NGX",
-    status: snapshot.status,
-    last_updated: snapshot.last_updated,
-    total_listed: snapshot.tickers.length,
-    active_tickers: active,
-    gainers,
-    losers,
-    unchanged: snapshot.tickers.length - gainers - losers,
-    total_volume: totalVolume,
-    all_share_index: null,
-    index_change_pct: null,
-  };
-}
 
 export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   const cached = cache.getNgxHistory(symbol);

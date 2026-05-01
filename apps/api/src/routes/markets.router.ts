@@ -19,8 +19,15 @@ async function getGseSnapshot(): Promise<MarketSnapshot> {
         await fetchGseSnapshot();
       } catch (err) {
         console.error("[GSE] Background refresh failed:", err instanceof Error ? err.message : String(err));
+        throw err;
       }
     })().finally(() => { gseFetchPromise = null; });
+  }
+
+  // If cache is empty and we are fetching, wait for it to finish
+  if (cached.tickers.length === 0 && gseFetchPromise) {
+    await gseFetchPromise;
+    return cache.getGseSnapshot();
   }
 
   return cached;
