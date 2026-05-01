@@ -1,16 +1,11 @@
-import axios from "axios";
+import { gotScraping } from "got-scraping";
 import * as cheerio from "cheerio";
 import { HistoricalData, HistoricalDataPoint } from "../types/market.types";
 import { cache } from "../cache/market.cache";
 
 const AFX_BASE = "https://afx.kwayisi.org";
 
-const HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  "Accept": "text/html, application/javascript, */*",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Referer": "https://afx.kwayisi.org/",
-};
+// Headers handled by got-scraping
 
 export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   const cached = cache.getGseHistory(symbol);
@@ -19,11 +14,8 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   // Primary: chart JS endpoint — full history since IPO
   try {
     const chartUrl = `${AFX_BASE}/chart/gse/${symbol.toLowerCase()}`;
-    const { data: js } = await axios.get<string>(chartUrl, {
-      timeout: 60000,
-      headers: HEADERS,
-      httpsAgent: new (require("https")).Agent({ family: 4 }),
-    });
+    const response = await gotScraping.get(chartUrl, { timeout: { request: 60000 } });
+    const js = response.body;
 
     const points = parseHighchartsScript(js);
     if (points.length > 0) {
@@ -42,11 +34,8 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
 
   // Fallback: [data-hist] table — last 10 trading days only
   const pageUrl = `${AFX_BASE}/gse/${symbol.toLowerCase()}.html`;
-  const { data: html } = await axios.get<string>(pageUrl, {
-    timeout: 60000,
-    headers: HEADERS,
-    httpsAgent: new (require("https")).Agent({ family: 4 }),
-  });
+  const response = await gotScraping.get(pageUrl, { timeout: { request: 60000 } });
+  const html = response.body;
 
   const $ = cheerio.load(html);
   const points: HistoricalDataPoint[] = [];

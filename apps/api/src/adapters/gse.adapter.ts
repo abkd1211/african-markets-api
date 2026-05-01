@@ -1,4 +1,4 @@
-import axios from "axios";
+import { gotScraping } from "got-scraping";
 import { MarketSnapshot, Ticker, CompanyProfile } from "../types/market.types";
 import { cache } from "../cache/market.cache";
 
@@ -26,16 +26,12 @@ interface KwayisiLiveTicker {
 export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
   console.log("[GSE] Starting fetch...");
   try {
-    const { data } = await axios.get<KwayisiLiveTicker[]>(`${BASE}/live`, {
-      timeout: 60000,
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://dev.kwayisi.org/",
-      },
-      httpsAgent: new (require("https")).Agent({ family: 4 }),
+    const response = await gotScraping.get(`${BASE}/live`, {
+      responseType: "json",
+      timeout: { request: 60000 },
     });
+    
+    const data = response.body as KwayisiLiveTicker[];
     console.log(`[GSE] Fetched ${data.length} tickers`);
     
     const tickers: Ticker[] = data.map((t) => ({
@@ -82,13 +78,11 @@ export async function fetchGseProfile(symbol: string): Promise<CompanyProfile> {
   const cached = cache.getProfile(symbol);
   if (cached) return cached;
 
-  const { data } = await axios.get<KwayisiEquity>(
-    `${BASE}/equities/${symbol.toLowerCase()}`,
-    { 
-      timeout: 60000,
-      httpsAgent: new (require("https")).Agent({ family: 4 }),
-    }
-  );
+  const response = await gotScraping.get(`${BASE}/equities/${symbol.toLowerCase()}`, {
+      responseType: "json",
+      timeout: { request: 60000 },
+  });
+  const data = response.body as KwayisiEquity;
 
   const profile: CompanyProfile = {
     symbol: data.name,

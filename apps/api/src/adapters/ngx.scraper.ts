@@ -1,4 +1,4 @@
-import axios from "axios";
+import { gotScraping } from "got-scraping";
 import * as cheerio from "cheerio";
 import {
   NgxSnapshot,
@@ -31,13 +31,13 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
 
   console.log("[NGX] Starting fetch...");
   try {
-    // Fetch both pages in parallel
+    // Fetch both pages in parallel using got-scraping
     const [page1, page2] = await Promise.all([
-      axios.get<string>(`${AFX_BASE}/ngx/`, { timeout: 60000, headers: HEADERS, httpsAgent: new (require("https")).Agent({ family: 4 }) }),
-      axios.get<string>(`${AFX_BASE}/ngx/?page=2`, { timeout: 60000, headers: HEADERS, httpsAgent: new (require("https")).Agent({ family: 4 }) }),
+      gotScraping.get(`${AFX_BASE}/ngx/`, { timeout: { request: 60000 } }),
+      gotScraping.get(`${AFX_BASE}/ngx/?page=2`, { timeout: { request: 60000 } }),
     ]);
 
-    const html = page1.data + page2.data;
+    const html = page1.body + page2.body;
     console.log("[NGX] Fetched HTML, parsing...");
 
     const $ = cheerio.load(html);
@@ -116,11 +116,8 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   // Try chart JSON endpoint first
   try {
     const chartUrl = `${AFX_BASE}/chart/ngx/${symbol.toLowerCase()}`;
-    const { data } = await axios.get(chartUrl, {
-      timeout: 60000,
-      headers: { ...HEADERS, Accept: "application/json, text/html" },
-      httpsAgent: new (require("https")).Agent({ family: 4 }),
-    });
+    const response = await gotScraping.get(chartUrl, { timeout: { request: 60000 } });
+    const data = response.body;
 
     const points = parseHighchartsScript(data);
     if (points.length > 0) {
@@ -140,11 +137,8 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   // Fallback: scrape data-hist table from ticker page
   // NGX ticker URLs use .html extension: /ngx/mtnn.html
   const pageUrl = `${AFX_BASE}/ngx/${symbol.toLowerCase()}.html`;
-  const { data: html } = await axios.get<string>(pageUrl, {
-    timeout: 60000,
-    headers: HEADERS,
-    httpsAgent: new (require("https")).Agent({ family: 4 }),
-  });
+  const response = await gotScraping.get(pageUrl, { timeout: { request: 60000 } });
+  const html = response.body;
 
   const $ = cheerio.load(html);
   const points: HistoricalDataPoint[] = [];
