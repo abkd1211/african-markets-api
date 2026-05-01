@@ -11,7 +11,7 @@ import { cache } from "../cache/market.cache";
 const AFX_BASE = "https://afx.kwayisi.org";
 
 const HEADERS = {
-  "User-Agent": "AfricanMarkets/1.0 (data aggregator)",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   "Accept": "text/html",
 };
 
