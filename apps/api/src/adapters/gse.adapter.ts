@@ -26,6 +26,7 @@ interface KwayisiLiveTicker {
 export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
   const { data } = await axios.get<KwayisiLiveTicker[]>(`${BASE}/live`, {
     timeout: 20000,
+    headers: { "User-Agent": "AfricanMarkets/1.0" },
   });
 
   const tickers: Ticker[] = data.map((t) => ({

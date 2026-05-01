@@ -53,16 +53,34 @@ cron.schedule("*/15 * * * *", async () => {
   catch (e) { console.error("[cron] NGX failed:", e); }
 });
 
-// Startup
+// Startup with retries
 async function bootstrap() {
   console.log("[startup] Fetching initial data...");
-  await Promise.allSettled([
-    fetchGseSnapshot().then(() => console.log("[startup] GSE ready.")),
-    fetchNgxSnapshot().then(() => console.log("[startup] NGX ready.")),
+  
+  // Retry logic: try up to 3 times with 2s delay
+  async function retryFetch(name: string, fn: () => Promise<any>, maxRetries = 3) {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        await fn();
+        console.log(`[startup] ${name} ready.`);
+        return;
+      } catch (err) {
+        console.error(`[startup] ${name} attempt ${i + 1} failed:`, String(err).slice(0, 100));
+        if (i < maxRetries - 1) await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    console.error(`[startup] ${name} failed after ${maxRetries} attempts.`);
+  }
+
+  await Promise.all([
+    retryFetch("GSE", () => fetchGseSnapshot()),
+    retryFetch("NGX", () => fetchNgxSnapshot()),
   ]);
+  
+  console.log("[startup] Data initialization complete.");
 }
 
-bootstrap();
+bootstrap().catch(err => console.error("[startup] Bootstrap error:", err));
 
 app.listen(PORT, () => {
   console.log(`African Markets API → http://localhost:${PORT}`);
