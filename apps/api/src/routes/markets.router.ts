@@ -6,7 +6,7 @@ import { Ticker, MarketSnapshot } from "../types/market.types";
 const router = Router();
 
 // Deduplicate parallel fetches to Kwayisi
-let gseFetchPromise: Promise<MarketSnapshot> | null = null;
+let gseFetchPromise: Promise<void> | null = null;
 
 async function getGseSnapshot(): Promise<MarketSnapshot> {
   const cached = cache.getGseSnapshot();
@@ -14,11 +14,13 @@ async function getGseSnapshot(): Promise<MarketSnapshot> {
 
   // If stale (includes ts=0 on startup), trigger background refresh
   if (isStale && !gseFetchPromise) {
-    gseFetchPromise = fetchGseSnapshot()
-      .catch((err) => {
+    gseFetchPromise = (async () => {
+      try {
+        await fetchGseSnapshot();
+      } catch (err) {
         console.error("[GSE] Background refresh failed:", err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => { gseFetchPromise = null; });
+      }
+    })().finally(() => { gseFetchPromise = null; });
   }
 
   return cached;
