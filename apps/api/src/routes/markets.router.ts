@@ -39,7 +39,7 @@ router.get("/live", async (req: Request, res: Response) => {
     const snapshot = await getGseSnapshot();
     res.json(snapshot);
   } catch (err) {
-    res.status(502).json({ error: "Failed to fetch GSE data", detail: String(err) });
+    res.status(200).json({ error: "Failed to fetch GSE data", detail: String(err), message: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined });
   }
 });
 
@@ -49,7 +49,7 @@ router.get("/ticker/:symbol", async (req: Request, res: Response) => {
     const profile = await fetchGseProfile(req.params.symbol as string);
     res.json(profile);
   } catch (err) {
-    res.status(404).json({ error: "Ticker not found", symbol: req.params.symbol });
+    res.status(200).json({ error: "Ticker not found", symbol: req.params.symbol, detail: String(err) });
   }
 });
 

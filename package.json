@@ -7,7 +7,9 @@
   "scripts": {
     "dev:api": "npm run dev --workspace=apps/api",
     "dev:web": "npm run dev --workspace=apps/web",
-    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\""
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "build:api": "npm run build --workspace=apps/api",
+    "start:api": "npm run start --workspace=apps/api"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
