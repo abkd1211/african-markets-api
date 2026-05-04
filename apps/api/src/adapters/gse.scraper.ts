@@ -5,6 +5,11 @@ import { cache } from "../cache/market.cache";
 
 const AFX_BASE = "https://afx.kwayisi.org";
 
+function buildProxyUrl(targetUrl: string): string {
+  const apiKey = process.env.SCRAPER_API_KEY || "59d7f8e6e20ff029eba00b6bc3b83de2";
+  return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+}
+
 // Headers handled by got-scraping
 
 export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
@@ -15,7 +20,7 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   try {
     const gotScraping = await gotScrapingPromise;
     const chartUrl = `${AFX_BASE}/chart/gse/${symbol.toLowerCase()}`;
-    const response = await gotScraping.get(chartUrl, { timeout: { request: 60000 } });
+    const response = await gotScraping.get(buildProxyUrl(chartUrl), { timeout: { request: 60000 } });
     const js = response.body;
 
     const points = parseHighchartsScript(js);
@@ -36,7 +41,7 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   // Fallback: [data-hist] table — last 10 trading days only
   const gotScraping = await gotScrapingPromise;
   const pageUrl = `${AFX_BASE}/gse/${symbol.toLowerCase()}.html`;
-  const response = await gotScraping.get(pageUrl, { timeout: { request: 60000 } });
+  const response = await gotScraping.get(buildProxyUrl(pageUrl), { timeout: { request: 60000 } });
   const html = response.body;
 
   const $ = cheerio.load(html);

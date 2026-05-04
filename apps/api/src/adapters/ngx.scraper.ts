@@ -17,8 +17,13 @@ const HEADERS = {
   "Referer": "https://afx.kwayisi.org/",
 };
 
+function buildProxyUrl(targetUrl: string): string {
+  const apiKey = process.env.SCRAPER_API_KEY || "59d7f8e6e20ff029eba00b6bc3b83de2";
+  return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+}
+
 // NGX: 09:30–14:30 WAT = 08:30–13:30 UTC
-function isNgxOpen(): boolean {
+export function isNgxOpen(): boolean {
   const now = new Date();
   const day = now.getUTCDay();
   const mins = now.getUTCHours() * 60 + now.getUTCMinutes();
@@ -33,9 +38,9 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
   try {
     // Fetch both pages sequentially to avoid triggering Kwayisi rate limits
     const gotScraping = await gotScrapingPromise;
-    const page1 = await gotScraping.get(`${AFX_BASE}/ngx/`, { timeout: { request: 60000 } });
+    const page1 = await gotScraping.get(buildProxyUrl(`${AFX_BASE}/ngx/`), { timeout: { request: 60000 } });
     await new Promise(r => setTimeout(r, 1500)); // 1.5s delay
-    const page2 = await gotScraping.get(`${AFX_BASE}/ngx/?page=2`, { timeout: { request: 60000 } });
+    const page2 = await gotScraping.get(buildProxyUrl(`${AFX_BASE}/ngx/?page=2`), { timeout: { request: 60000 } });
 
     const html = page1.body + page2.body;
     console.log("[NGX] Fetched HTML, parsing...");
@@ -117,7 +122,7 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   try {
     const gotScraping = await gotScrapingPromise;
     const chartUrl = `${AFX_BASE}/chart/ngx/${symbol.toLowerCase()}`;
-    const response = await gotScraping.get(chartUrl, { timeout: { request: 60000 } });
+    const response = await gotScraping.get(buildProxyUrl(chartUrl), { timeout: { request: 60000 } });
     const data = response.body;
 
     const points = parseHighchartsScript(data);
@@ -139,7 +144,7 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   // NGX ticker URLs use .html extension: /ngx/mtnn.html
   const gotScraping = await gotScrapingPromise;
   const pageUrl = `${AFX_BASE}/ngx/${symbol.toLowerCase()}.html`;
-  const response = await gotScraping.get(pageUrl, { timeout: { request: 60000 } });
+  const response = await gotScraping.get(buildProxyUrl(pageUrl), { timeout: { request: 60000 } });
   const html = response.body;
 
   const $ = cheerio.load(html);

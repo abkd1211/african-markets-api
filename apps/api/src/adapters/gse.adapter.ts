@@ -5,7 +5,7 @@ import { cache } from "../cache/market.cache";
 const BASE = process.env.GSE_API_BASE || "https://dev.kwayisi.org/apis/gse";
 
 // GSE trading hours: 10:00–15:00 GMT, weekdays only
-function isGseOpen(): boolean {
+export function isGseOpen(): boolean {
   const now = new Date();
   const day = now.getUTCDay(); // 0=Sun, 6=Sat
   const hour = now.getUTCHours();
@@ -23,11 +23,17 @@ interface KwayisiLiveTicker {
   volume: number;
 }
 
+function buildProxyUrl(targetUrl: string): string {
+  const apiKey = process.env.SCRAPER_API_KEY || "59d7f8e6e20ff029eba00b6bc3b83de2";
+  return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+}
+
 export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
   console.log("[GSE] Starting fetch...");
   try {
     const gotScraping = await gotScrapingPromise;
-    const response = await gotScraping.get(`${BASE}/live`, {
+    const targetUrl = `${BASE}/live`;
+    const response = await gotScraping.get(buildProxyUrl(targetUrl), {
       responseType: "json",
       timeout: { request: 60000 },
     });
@@ -80,7 +86,8 @@ export async function fetchGseProfile(symbol: string): Promise<CompanyProfile> {
   if (cached) return cached;
 
   const gotScraping = await gotScrapingPromise;
-  const response = await gotScraping.get(`${BASE}/equities/${symbol.toLowerCase()}`, {
+  const targetUrl = `${BASE}/equities/${symbol.toLowerCase()}`;
+  const response = await gotScraping.get(buildProxyUrl(targetUrl), {
       responseType: "json",
       timeout: { request: 60000 },
   });

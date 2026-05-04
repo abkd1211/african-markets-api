@@ -5,8 +5,8 @@ import cron from "node-cron";
 import marketsRouter from "./routes/markets.router";
 import ngxRouter from "./routes/ngx.router";
 import historyRouter from "./routes/history.router";
-import { fetchGseSnapshot } from "./adapters/gse.adapter";
-import { fetchNgxSnapshot } from "./adapters/ngx.scraper";
+import { fetchGseSnapshot, isGseOpen } from "./adapters/gse.adapter";
+import { fetchNgxSnapshot, isNgxOpen } from "./adapters/ngx.scraper";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,15 +39,23 @@ app.get("/health", (_, res) => {
   });
 });
 
-// GSE: poll every 15 min 24/7 to keep cache warm
-cron.schedule("*/15 * * * *", async () => {
+// GSE: poll every 5 min during market hours
+cron.schedule("*/5 * * * *", async () => {
+  if (!isGseOpen()) {
+    console.log("[cron] GSE is closed. Skipping fetch.");
+    return;
+  }
   console.log("[cron] Polling GSE...");
   try { await fetchGseSnapshot(); console.log("[cron] GSE updated."); }
   catch (e) { console.error("[cron] GSE failed:", e); }
 });
 
-// NGX: poll every 15 min 24/7 (offset by 2 mins to avoid rate limit overlap with GSE)
-cron.schedule("2-59/15 * * * *", async () => {
+// NGX: poll every 5 min during market hours (offset by 1 min to avoid overlap)
+cron.schedule("1-56/5 * * * *", async () => {
+  if (!isNgxOpen()) {
+    console.log("[cron] NGX is closed. Skipping fetch.");
+    return;
+  }
   console.log("[cron] Polling NGX...");
   try { await fetchNgxSnapshot(); console.log("[cron] NGX updated."); }
   catch (e) { console.error("[cron] NGX failed:", e); }
