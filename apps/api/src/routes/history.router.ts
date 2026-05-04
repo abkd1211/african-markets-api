@@ -7,7 +7,7 @@ const router = Router();
 // GET /api/v1/history/gse/:symbol?range=1M|3M|1Y|all
 router.get("/gse/:symbol", async (req: Request, res: Response) => {
   try {
-    const { symbol } = req.params;
+    const symbol = req.params.symbol as string;
     const range = (req.query.range as string) || "1Y";
     
     // Handle index request specifically if needed, or just let scraper handle it
@@ -24,7 +24,7 @@ router.get("/gse/:symbol", async (req: Request, res: Response) => {
 // GET /api/v1/history/ngx/:symbol?range=1M|3M|1Y|all
 router.get("/ngx/:symbol", async (req: Request, res: Response) => {
   try {
-    const { symbol } = req.params;
+    const symbol = req.params.symbol as string;
     const range = (req.query.range as string) || "1Y";
     
     // Handle index request specifically if needed (ASI)
