@@ -9,10 +9,34 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { symbol, exchange } = await params;
-  return {
-    title: `${symbol.toUpperCase()} — ${exchange.toUpperCase()} | AfricanMarkets`,
-    description: `Live price, historical chart and company profile for ${symbol.toUpperCase()} on the ${exchange.toUpperCase()}.`,
-  };
+  const ex = exchange.toUpperCase() as "GSE" | "NGX";
+  
+  try {
+    const history = await (ex === "GSE" 
+      ? api.gse.history(symbol, "1M") 
+      : api.ngx.history(symbol, "1M"));
+    
+    const lastPoint = history.data[history.data.length - 1];
+    const firstPoint = history.data[0];
+    const price = lastPoint?.close;
+    const changePct = firstPoint && lastPoint ? ((lastPoint.close - firstPoint.close) / firstPoint.close) * 100 : 0;
+    const sign = changePct >= 0 ? "+" : "";
+    const currency = ex === "GSE" ? "GH₵" : "₦";
+
+    return {
+      title: `${symbol.toUpperCase()}: ${currency} ${price?.toLocaleString()} (${sign}${changePct.toFixed(2)}%) | AfricanMarkets`,
+      description: `Live share price for ${symbol.toUpperCase()} on the ${exchange.toUpperCase()}. Current price: ${currency} ${price?.toLocaleString()}. View 10-year historical charts, performance metrics, and company profiles on AfricanMarkets.`,
+      openGraph: {
+        title: `${symbol.toUpperCase()} Stock Price | AfricanMarkets`,
+        description: `Track ${symbol.toUpperCase()} performance on the ${exchange.toUpperCase()}. Real-time data and historical analysis.`,
+        type: "website",
+      }
+    };
+  } catch {
+    return {
+      title: `${symbol.toUpperCase()} — ${exchange.toUpperCase()} | AfricanMarkets`,
+    };
+  }
 }
 
 export default async function TickerPage({ params }: Props) {
@@ -35,15 +59,33 @@ export default async function TickerPage({ params }: Props) {
 
     if (!historyData || historyData.data.length === 0) return notFound();
 
+    const lastPoint = historyData.data[historyData.data.length - 1];
+
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "FinancialQuote",
+      "symbol": sym,
+      "exchange": ex,
+      "price": lastPoint?.close,
+      "priceCurrency": ex === "GSE" ? "GHS" : "NGN",
+      "url": `https://african-markets.vercel.app/ticker/${exchange}/${symbol}`,
+    };
+
     return (
-      <Suspense>
-        <TickerPageClient
-          symbol={sym}
-          exchange={ex}
-          initialHistory={historyData}
-          initialProfile={profileData}
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-      </Suspense>
+        <Suspense>
+          <TickerPageClient
+            symbol={sym}
+            exchange={ex}
+            initialHistory={historyData}
+            initialProfile={profileData}
+          />
+        </Suspense>
+      </>
     );
   } catch {
     return notFound();
