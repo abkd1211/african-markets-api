@@ -9,7 +9,11 @@ router.get("/gse/:symbol", async (req: Request, res: Response) => {
   try {
     const { symbol } = req.params;
     const range = (req.query.range as string) || "1Y";
-    const history = await fetchGseHistory(symbol as string);
+    
+    // Handle index request specifically if needed, or just let scraper handle it
+    const normalizedSymbol = symbol.toLowerCase() === "gse-ci" ? "gse-ci" : symbol;
+    
+    const history = await fetchGseHistory(normalizedSymbol as string);
     const filtered = filterByRange(history.data, range);
     res.json({ ...history, data: filtered, range });
   } catch (err) {
@@ -22,7 +26,11 @@ router.get("/ngx/:symbol", async (req: Request, res: Response) => {
   try {
     const { symbol } = req.params;
     const range = (req.query.range as string) || "1Y";
-    const history = await fetchNgxHistory(symbol as string);
+    
+    // Handle index request specifically if needed (ASI)
+    const normalizedSymbol = symbol.toLowerCase() === "asi" ? "asi" : symbol;
+    
+    const history = await fetchNgxHistory(normalizedSymbol as string);
     const filtered = filterByRange(history.data, range);
     res.json({ ...history, data: filtered, range });
   } catch (err) {
@@ -34,17 +42,18 @@ function filterByRange(
   data: { date: string }[],
   range: string
 ): typeof data {
-  if (range === "all") return data;
+  const r = range.toLowerCase();
+  if (r === "all") return data;
 
   const now = new Date();
   const cutoff = new Date();
 
-  switch (range) {
-    case "1W": cutoff.setDate(now.getDate() - 7); break;
-    case "1M": cutoff.setMonth(now.getMonth() - 1); break;
-    case "3M": cutoff.setMonth(now.getMonth() - 3); break;
-    case "6M": cutoff.setMonth(now.getMonth() - 6); break;
-    case "1Y": cutoff.setFullYear(now.getFullYear() - 1); break;
+  switch (r) {
+    case "1w": cutoff.setDate(now.getDate() - 7); break;
+    case "1m": cutoff.setMonth(now.getMonth() - 1); break;
+    case "3m": cutoff.setMonth(now.getMonth() - 3); break;
+    case "6m": cutoff.setMonth(now.getMonth() - 6); break;
+    case "1y": cutoff.setFullYear(now.getFullYear() - 1); break;
     default:   cutoff.setFullYear(now.getFullYear() - 1);
   }
 

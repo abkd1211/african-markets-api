@@ -16,10 +16,14 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   const cached = cache.getGseHistory(symbol);
   if (cached) return cached;
 
-  // Primary: chart JS endpoint — full history since IPO
+  // Primary: chart JS endpoint or embedded JS for index
   try {
     const gotScraping = await gotScrapingPromise;
-    const chartUrl = `${AFX_BASE}/chart/gse/${symbol.toLowerCase()}`;
+    
+    // For the main index, the URL is just /chart/gse
+    const slug = symbol.toLowerCase() === "gse-ci" ? "" : symbol.toLowerCase();
+    const chartUrl = `${AFX_BASE}/chart/gse${slug ? "/" + slug : ""}`;
+    
     const response = await gotScraping.get(buildProxyUrl(chartUrl), { timeout: { request: 60000 } });
     const js = response.body;
 
@@ -34,7 +38,8 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
       cache.setGseHistory(symbol, result);
       return result;
     }
-  } catch {
+  } catch (err) {
+    console.error(`[GSE] History fetch failed for ${symbol}:`, err instanceof Error ? err.message : String(err));
     // fall through to HTML scrape
   }
 
@@ -115,6 +120,8 @@ function parseHighchartsScript(js: string): HistoricalDataPoint[] {
       volume: null,
     });
   }
+
+  return points.sort((a, b) => a.date.localeCompare(b.date));
 
   return points.sort((a, b) => a.date.localeCompare(b.date));
 }

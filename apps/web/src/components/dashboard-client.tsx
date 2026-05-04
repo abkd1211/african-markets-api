@@ -14,6 +14,7 @@ import { MarketStatus } from "./market-status";
 import { StatCard } from "./stat-card";
 import { TickerTable } from "./ticker-table";
 import { ExchangeTabs } from "./exchange-tabs";
+import { MarketIndexCharts } from "./market-index-charts";
 import { Logo } from "./logo";
 import { api } from "@/lib/api";
 import { formatVolume } from "@/lib/utils";
@@ -123,8 +124,11 @@ export function DashboardClient({
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        {/* Market Depth Indices */}
+        <MarketIndexCharts />
+
         {/* Exchange tabs */}
-        <div className="space-y-4">
+        <div className="space-y-4 pt-4 border-t border-border-subtle">
           <ExchangeTabs
             active={activeExchange}
             onChange={setActiveExchange}

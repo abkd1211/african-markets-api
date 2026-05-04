@@ -79,3 +79,9 @@ body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg-secondary); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Remove TradingView watermark from Lightweight Charts without breaking layout */
+#tv-attr-logo {
+  display: none !important;
+}
+

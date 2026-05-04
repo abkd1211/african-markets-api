@@ -118,14 +118,18 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   const cached = cache.getNgxHistory(symbol);
   if (cached) return cached;
 
-  // Try chart JSON endpoint first
+  // Primary: chart JS endpoint or embedded JS for ASI
   try {
     const gotScraping = await gotScrapingPromise;
-    const chartUrl = `${AFX_BASE}/chart/ngx/${symbol.toLowerCase()}`;
+    
+    // For the main index (ASI), the URL is just /chart/ngx
+    const slug = symbol.toLowerCase() === "asi" ? "" : symbol.toLowerCase();
+    const chartUrl = `${AFX_BASE}/chart/ngx${slug ? "/" + slug : ""}`;
+    
     const response = await gotScraping.get(buildProxyUrl(chartUrl), { timeout: { request: 60000 } });
-    const data = response.body;
+    const js = response.body;
 
-    const points = parseHighchartsScript(data);
+    const points = parseHighchartsScript(js);
     if (points.length > 0) {
       const result: HistoricalData = {
         symbol: symbol.toUpperCase(),
@@ -136,7 +140,8 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
       cache.setNgxHistory(symbol, result);
       return result;
     }
-  } catch {
+  } catch (err) {
+    console.error(`[NGX] History fetch failed for ${symbol}:`, err instanceof Error ? err.message : String(err));
     // fall through
   }
 
@@ -193,10 +198,13 @@ function parseHighchartsScript(js: string): HistoricalDataPoint[] {
 
   if (!dataMatch) return points;
 
+  const rawPairs = dataMatch[1];
+
+  // Match each [d("YYYY-MM-DD"),price] pair
   const pairRegex = /\[d\("(\d{4}-\d{2}-\d{2})"\)\s*,\s*([\d.]+)\]/g;
   let match: RegExpExecArray | null;
 
-  while ((match = pairRegex.exec(dataMatch[1])) !== null) {
+  while ((match = pairRegex.exec(rawPairs)) !== null) {
     const date = match[1];
     const close = parseFloat(match[2]);
     if (!date || isNaN(close)) continue;

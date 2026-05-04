@@ -23,8 +23,8 @@ export default async function TickerPage({ params }: Props) {
   try {
     const [history, profile] = await Promise.allSettled([
       ex === "GSE"
-        ? api.gse.history(symbol, "1Y")
-        : api.ngx.history(symbol, "1Y"),
+        ? api.gse.history(symbol, "All")
+        : api.ngx.history(symbol, "All"),
       ex === "GSE"
         ? api.gse.ticker(symbol)
         : Promise.resolve(null),

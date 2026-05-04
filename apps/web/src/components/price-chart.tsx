@@ -20,10 +20,12 @@ type ChartType = "line" | "candle";
 
 interface Props {
   data: HistoricalDataPoint[];
-  currency: string;
-  symbol: string;
+  currency?: string;
+  symbol?: string;
   onRangeChange?: (range: Range) => void;
   isLoading?: boolean;
+  height?: number;
+  showControls?: boolean;
 }
 
 const RANGES: Range[] = ["1M", "3M", "6M", "1Y", "All"];
@@ -43,7 +45,15 @@ function filterByRange(data: HistoricalDataPoint[], range: Range): HistoricalDat
 // In v5, ISeriesApi still uses the string key "Line" | "Candlestick"
 type AnySeriesApi = ISeriesApi<"Line"> | ISeriesApi<"Candlestick">;
 
-export function PriceChart({ data, currency, symbol, onRangeChange, isLoading }: Props) {
+export function PriceChart({ 
+  data, 
+  currency, 
+  symbol, 
+  onRangeChange, 
+  isLoading,
+  height = 320,
+  showControls = true
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<AnySeriesApi | null>(null);
@@ -104,7 +114,8 @@ export function PriceChart({ data, currency, symbol, onRangeChange, isLoading }:
       // In v5, timeScale.textColor moved to layout; only borderColor stays here
       timeScale: {
         borderColor: colors.border,
-        timeVisible: false,
+        visible: true,
+        timeVisible: true,
       },
       handleScroll: true,
       handleScale: true,
@@ -190,7 +201,8 @@ export function PriceChart({ data, currency, symbol, onRangeChange, isLoading }:
   return (
     <div className="space-y-3">
       {/* Controls */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      {showControls && (
+        <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex gap-1">
           {RANGES.map(r => (
             <button
@@ -243,6 +255,7 @@ export function PriceChart({ data, currency, symbol, onRangeChange, isLoading }:
           </div>
         </div>
       </div>
+      )}
 
       {/* Chart canvas */}
       <div
@@ -259,7 +272,7 @@ export function PriceChart({ data, currency, symbol, onRangeChange, isLoading }:
             </div>
           </div>
         )}
-        <div ref={containerRef} style={{ height: "320px", width: "100%" }} />
+        <div ref={containerRef} style={{ height: `${height}px`, width: "100%" }} />
       </div>
 
       {chartType === "candle" && (
