@@ -57,7 +57,15 @@ export default async function TickerPage({ params }: Props) {
     const historyData = history.status === "fulfilled" ? history.value : null;
     const profileData = profile.status === "fulfilled" ? profile.value : null;
 
-    if (!historyData || historyData.data.length === 0) return notFound();
+    if (!historyData || historyData.data.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
+          <h1 className="text-2xl font-bold mb-2">Ticker Not Found</h1>
+          <p className="text-muted-foreground">We couldn't find data for {sym} on the {ex}. It might be delisted or temporarily unavailable.</p>
+          <a href="/" className="mt-4 text-primary hover:underline">Back to Dashboard</a>
+        </div>
+      );
+    }
 
     const lastPoint = historyData.data[historyData.data.length - 1];
 
@@ -88,6 +96,12 @@ export default async function TickerPage({ params }: Props) {
       </>
     );
   } catch {
-    return notFound();
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
+        <h1 className="text-2xl font-bold mb-2">Service Temporarily Limited</h1>
+        <p className="text-muted-foreground">Our data provider is currently throttled due to high traffic. We're working on restoring full service shortly.</p>
+        <a href="/" className="mt-4 text-primary hover:underline">Back to Dashboard</a>
+      </div>
+    );
   }
-}
+}

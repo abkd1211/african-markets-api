@@ -8,21 +8,14 @@ import {
 } from "../types/market.types";
 import { cache } from "../cache/market.cache";
 
-const AFX_BASE = "https://afx.kwayisi.org";
-
-const HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  "Accept": "text/html, application/javascript, */*",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Referer": "https://afx.kwayisi.org/",
-};
+const AF_BASE = "https://afx.kwayisi.org";
 
 function buildProxyUrl(targetUrl: string): string {
-  const apiKey = process.env.SCRAPER_API_KEY || "59d7f8e6e20ff029eba00b6bc3b83de2";
+  const apiKey = process.env.SCRAPER_API_KEY || "7e922c59c968b2133b7c574bc8af117e";
   return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
 }
 
-// NGX: 09:30–14:30 WAT = 08:30–13:30 UTC
+
 export function isNgxOpen(): boolean {
   const now = new Date();
   const day = now.getUTCDay();
@@ -36,26 +29,19 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
 
   console.log("[NGX] Starting fetch...");
   try {
-    // Fetch both pages sequentially to avoid triggering Kwayisi rate limits
     const gotScraping = await gotScrapingPromise;
-    const page1 = await gotScraping.get(buildProxyUrl(`${AFX_BASE}/ngx/`), { timeout: { request: 60000 } });
-    await new Promise(r => setTimeout(r, 1500)); // 1.5s delay
-    const page2 = await gotScraping.get(buildProxyUrl(`${AFX_BASE}/ngx/?page=2`), { timeout: { request: 60000 } });
+    const page1 = await gotScraping.get(buildProxyUrl(`${AF_BASE}/ngx/`), { timeout: { request: 60000 } });
+    await new Promise(r => setTimeout(r, 1500)); 
+    const page2 = await gotScraping.get(buildProxyUrl(`${AF_BASE}/ngx/?page=2`), { timeout: { request: 60000 } });
 
     const html = page1.body + page2.body;
-    console.log("[NGX] Fetched HTML, parsing...");
-
     const $ = cheerio.load(html);
     const tickers: NgxTicker[] = [];
 
-    // The main ticker table is inside div.t > table
-    // Columns: Ticker | Name | Volume | Price | Change
-    // Rows with class="ss" are suspended — still include them, just no volume/change
     $("div.t table tbody tr").each((_, row) => {
       const cells = $(row).find("td");
       if (cells.length < 4) return;
 
-      // Symbol is in an <a> tag inside first td
       const symbol = $(cells[0]).find("a").text().trim();
       const name = $(cells[1]).find("a").text().trim();
       const volumeText = $(cells[2]).text().trim().replace(/,/g, "");
@@ -63,15 +49,12 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
       const changeText = $(cells[4])?.text().trim().replace(/,/g, "") ?? "0";
 
       if (!symbol) return;
-
       const price = parseFloat(priceText);
       if (isNaN(price)) return;
 
       const change = parseFloat(changeText.replace("+", "")) || 0;
       const prevPrice = price - change;
-      const change_pct = prevPrice > 0
-        ? parseFloat(((change / prevPrice) * 100).toFixed(2))
-        : 0;
+      const change_pct = prevPrice > 0 ? parseFloat(((change / prevPrice) * 100).toFixed(2)) : 0;
 
       tickers.push({
         symbol,
@@ -84,18 +67,6 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
       });
     });
 
-    console.log(`[NGX] Parsed ${tickers.length} tickers`);
-
-    // Parse ASI from the index summary table (first table, class=c)
-    let asi: number | null = null;
-    let asiChangePct: number | null = null;
-
-    $("table.c tbody tr td").first().each((_, el) => {
-      const text = $(el).text().trim().replace(/,/g, "");
-      const match = text.match(/([\d.]+)/);
-      if (match) asi = parseFloat(match[1]);
-    });
-
     const snapshot: NgxSnapshot = {
       exchange: "NGX",
       status: isNgxOpen() ? "OPEN" : "CLOSED",
@@ -103,28 +74,26 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
       tickers,
     };
 
-    if (tickers.length > 0) cache.setNgxSnapshot(snapshot);
-    console.log(`[NGX] Cached snapshot with ${tickers.length} tickers`);
-    return snapshot;
+    if (tickers.length > 0) {
+      cache.setNgxSnapshot(snapshot);
+      return snapshot;
+    }
   } catch (err) {
     console.error("[NGX] Fetch failed:", err instanceof Error ? err.message : String(err));
-    throw err;
+    const cached = cache.getNgxSnapshot();
+    if (cached) return cached;
   }
+  throw new Error("Failed to fetch NGX snapshot and no cache available");
 }
-
-
 
 export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   const cached = cache.getNgxHistory(symbol);
   if (cached) return cached;
 
-  // Primary: chart JS endpoint or embedded JS for ASI
   try {
     const gotScraping = await gotScrapingPromise;
-    
-    // For the main index (ASI), the URL is just /chart/ngx
     const slug = symbol.toLowerCase() === "asi" ? "" : symbol.toLowerCase();
-    const chartUrl = `${AFX_BASE}/chart/ngx${slug ? "/" + slug : ""}`;
+    const chartUrl = `${AF_BASE}/chart/ngx${slug ? "/" + slug : ""}`;
     
     const response = await gotScraping.get(buildProxyUrl(chartUrl), { timeout: { request: 60000 } });
     const js = response.body;
@@ -142,65 +111,68 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
     }
   } catch (err) {
     console.error(`[NGX] History fetch failed for ${symbol}:`, err instanceof Error ? err.message : String(err));
-    // fall through
+    const cached = cache.getNgxHistory(symbol);
+    if (cached) return cached;
   }
 
-  // Fallback: scrape data-hist table from ticker page
-  // NGX ticker URLs use .html extension: /ngx/mtnn.html
-  const gotScraping = await gotScrapingPromise;
-  const pageUrl = `${AFX_BASE}/ngx/${symbol.toLowerCase()}.html`;
-  const response = await gotScraping.get(buildProxyUrl(pageUrl), { timeout: { request: 60000 } });
-  const html = response.body;
+  try {
+    const gotScraping = await gotScrapingPromise;
+    const pageUrl = `${AF_BASE}/ngx/${symbol.toLowerCase()}.html`;
+    const response = await gotScraping.get(buildProxyUrl(pageUrl), { timeout: { request: 60000 } });
+    const html = response.body;
 
-  const $ = cheerio.load(html);
-  const points: HistoricalDataPoint[] = [];
+    const $ = cheerio.load(html);
+    const points: HistoricalDataPoint[] = [];
 
-  $("table[data-hist] tbody tr").each((_, row) => {
-    const cells = $(row).find("td");
-    if (cells.length < 3) return;
+    $("table[data-hist] tbody tr").each((_, row) => {
+      const cells = $(row).find("td");
+      if (cells.length < 3) return;
 
-    const dateText = $(cells[0]).text().trim();
-    const volumeText = $(cells[1]).text().trim().replace(/,/g, "");
-    const closeText = $(cells[2]).text().trim();
+      const dateText = $(cells[0]).text().trim();
+      const volumeText = $(cells[1]).text().trim().replace(/,/g, "");
+      const closeText = $(cells[2]).text().trim();
 
-    const close = parseFloat(closeText);
-    if (!dateText || isNaN(close)) return;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return;
+      const close = parseFloat(closeText);
+      if (!dateText || isNaN(close)) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return;
 
-    points.push({
-      date: dateText,
-      open: null,
-      high: null,
-      low: null,
-      close,
-      volume: parseInt(volumeText, 10) || null,
+      points.push({
+        date: dateText,
+        open: null,
+        high: null,
+        low: null,
+        close,
+        volume: parseInt(volumeText, 10) || null,
+      });
     });
-  });
 
-  points.sort((a, b) => a.date.localeCompare(b.date));
+    if (points.length > 0) {
+      const result: HistoricalData = {
+        symbol: symbol.toUpperCase(),
+        exchange: "NGX",
+        currency: "NGN",
+        data: points.sort((a, b) => a.date.localeCompare(b.date)),
+      };
+      cache.setNgxHistory(symbol, result);
+      return result;
+    }
+  } catch (err) {
+    console.error(`[NGX] HTML fallback failed for ${symbol}:`, err instanceof Error ? err.message : String(err));
+    const cached = cache.getNgxHistory(symbol);
+    if (cached) return cached;
+  }
 
-  const result: HistoricalData = {
-    symbol: symbol.toUpperCase(),
-    exchange: "NGX",
-    currency: "NGN",
-    data: points,
-  };
-
-  if (points.length > 0) cache.setNgxHistory(symbol, result);
-  return result;
+  throw new Error(`No data found for NGX symbol: ${symbol}`);
 }
 
 function parseHighchartsScript(js: string): HistoricalDataPoint[] {
   const points: HistoricalDataPoint[] = [];
-
   const dataMatch = js.match(/data:\[(\[d\([^\]]+\].*?)\]\}/s) ||
                     js.match(/data:\[([\s\S]+?)\]\s*\}\s*\]/);
 
   if (!dataMatch) return points;
 
   const rawPairs = dataMatch[1];
-
-  // Match each [d("YYYY-MM-DD"),price] pair
   const pairRegex = /\[d\("(\d{4}-\d{2}-\d{2})"\)\s*,\s*([\d.]+)\]/g;
   let match: RegExpExecArray | null;
 

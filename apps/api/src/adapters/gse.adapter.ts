@@ -23,20 +23,17 @@ interface KwayisiLiveTicker {
   volume: number;
 }
 
-function buildProxyUrl(targetUrl: string): string {
-  const apiKey = process.env.SCRAPER_API_KEY || "59d7f8e6e20ff029eba00b6bc3b83de2";
-  return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
-}
-
 export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
+
   console.log("[GSE] Starting fetch...");
   try {
     const gotScraping = await gotScrapingPromise;
     const targetUrl = `${BASE}/live`;
-    const response = await gotScraping.get(buildProxyUrl(targetUrl), {
+    const response = await gotScraping.get(targetUrl, {
       responseType: "json",
       timeout: { request: 60000 },
     });
+
     
     const data = response.body as KwayisiLiveTicker[];
     console.log(`[GSE] Fetched ${data.length} tickers`);
@@ -87,10 +84,11 @@ export async function fetchGseProfile(symbol: string): Promise<CompanyProfile> {
 
   const gotScraping = await gotScrapingPromise;
   const targetUrl = `${BASE}/equities/${symbol.toLowerCase()}`;
-  const response = await gotScraping.get(buildProxyUrl(targetUrl), {
+  const response = await gotScraping.get(targetUrl, {
       responseType: "json",
       timeout: { request: 60000 },
   });
+
   const data = response.body as KwayisiEquity;
 
   const profile: CompanyProfile = {

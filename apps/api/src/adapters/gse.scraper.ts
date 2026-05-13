@@ -3,14 +3,13 @@ import * as cheerio from "cheerio";
 import { HistoricalData, HistoricalDataPoint } from "../types/market.types";
 import { cache } from "../cache/market.cache";
 
-const AFX_BASE = "https://afx.kwayisi.org";
+const AF_BASE = "https://afx.kwayisi.org";
 
 function buildProxyUrl(targetUrl: string): string {
-  const apiKey = process.env.SCRAPER_API_KEY || "59d7f8e6e20ff029eba00b6bc3b83de2";
+  const apiKey = process.env.SCRAPER_API_KEY || "7e922c59c968b2133b7c574bc8af117e";
   return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
 }
 
-// Headers handled by got-scraping
 
 export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   const cached = cache.getGseHistory(symbol);
@@ -19,10 +18,8 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
   // Primary: chart JS endpoint or embedded JS for index
   try {
     const gotScraping = await gotScrapingPromise;
-    
-    // For the main index, the URL is just /chart/gse
     const slug = symbol.toLowerCase() === "gse-ci" ? "" : symbol.toLowerCase();
-    const chartUrl = `${AFX_BASE}/chart/gse${slug ? "/" + slug : ""}`;
+    const chartUrl = `${AF_BASE}/chart/gse${slug ? "/" + slug : ""}`;
     
     const response = await gotScraping.get(buildProxyUrl(chartUrl), { timeout: { request: 60000 } });
     const js = response.body;
@@ -40,69 +37,72 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
     }
   } catch (err) {
     console.error(`[GSE] History fetch failed for ${symbol}:`, err instanceof Error ? err.message : String(err));
-    // fall through to HTML scrape
+    const cached = cache.getGseHistory(symbol);
+    if (cached) {
+      console.log(`[GSE] Returning stale cache for ${symbol}`);
+      return cached;
+    }
   }
 
-  // Fallback: [data-hist] table — last 10 trading days only
-  const gotScraping = await gotScrapingPromise;
-  const pageUrl = `${AFX_BASE}/gse/${symbol.toLowerCase()}.html`;
-  const response = await gotScraping.get(buildProxyUrl(pageUrl), { timeout: { request: 60000 } });
-  const html = response.body;
+  // Fallback: scrape data-hist table
+  try {
+    const gotScraping = await gotScrapingPromise;
+    const pageUrl = `${AF_BASE}/gse/${symbol.toLowerCase()}.html`;
+    const response = await gotScraping.get(buildProxyUrl(pageUrl), { timeout: { request: 60000 } });
+    const html = response.body;
 
-  const $ = cheerio.load(html);
-  const points: HistoricalDataPoint[] = [];
+    const $ = cheerio.load(html);
+    const points: HistoricalDataPoint[] = [];
 
-  $("table[data-hist] tbody tr").each((_, row) => {
-    const cells = $(row).find("td");
-    if (cells.length < 3) return;
+    $("table[data-hist] tbody tr").each((_, row) => {
+      const cells = $(row).find("td");
+      if (cells.length < 3) return;
 
-    const dateText = $(cells[0]).text().trim();
-    const volumeText = $(cells[1]).text().trim().replace(/,/g, "");
-    const closeText = $(cells[2]).text().trim();
+      const dateText = $(cells[0]).text().trim();
+      const volumeText = $(cells[1]).text().trim().replace(/,/g, "");
+      const closeText = $(cells[2]).text().trim();
 
-    const close = parseFloat(closeText);
-    if (!dateText || isNaN(close)) return;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return;
+      const close = parseFloat(closeText);
+      if (!dateText || isNaN(close)) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return;
 
-    points.push({
-      date: dateText,
-      open: null,
-      high: null,
-      low: null,
-      close,
-      volume: parseInt(volumeText, 10) || null,
+      points.push({
+        date: dateText,
+        open: null,
+        high: null,
+        low: null,
+        close,
+        volume: parseInt(volumeText, 10) || null,
+      });
     });
-  });
 
-  points.sort((a, b) => a.date.localeCompare(b.date));
+    if (points.length > 0) {
+      const result: HistoricalData = {
+        symbol: symbol.toUpperCase(),
+        exchange: "GSE",
+        currency: "GHS",
+        data: points.sort((a, b) => a.date.localeCompare(b.date)),
+      };
+      cache.setGseHistory(symbol, result);
+      return result;
+    }
+  } catch (err) {
+    console.error(`[GSE] HTML fallback failed for ${symbol}:`, err instanceof Error ? err.message : String(err));
+    const cached = cache.getGseHistory(symbol);
+    if (cached) return cached;
+  }
 
-  const result: HistoricalData = {
-    symbol: symbol.toUpperCase(),
-    exchange: "GSE",
-    currency: "GHS",
-    data: points,
-  };
-
-  if (points.length > 0) cache.setGseHistory(symbol, result);
-  return result;
+  throw new Error(`No data found for GSE symbol: ${symbol}`);
 }
 
-/**
- * Parses Highcharts StockChart JS like:
- * data:[[d("2018-09-03"),0.75],[d("2018-09-04"),0.75],...]
- */
 function parseHighchartsScript(js: string): HistoricalDataPoint[] {
   const points: HistoricalDataPoint[] = [];
-
-  // Extract the data array: everything between data:[ and the closing ]
   const dataMatch = js.match(/data:\[(\[d\([^\]]+\].*?)\]\}/s) ||
                     js.match(/data:\[([\s\S]+?)\]\s*\}\s*\]/);
 
   if (!dataMatch) return points;
 
   const rawPairs = dataMatch[1];
-
-  // Match each [d("YYYY-MM-DD"),price] pair
   const pairRegex = /\[d\("(\d{4}-\d{2}-\d{2})"\)\s*,\s*([\d.]+)\]/g;
   let match: RegExpExecArray | null;
 
@@ -120,8 +120,6 @@ function parseHighchartsScript(js: string): HistoricalDataPoint[] {
       volume: null,
     });
   }
-
-  return points.sort((a, b) => a.date.localeCompare(b.date));
 
   return points.sort((a, b) => a.date.localeCompare(b.date));
 }
