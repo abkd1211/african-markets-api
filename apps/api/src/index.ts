@@ -39,8 +39,8 @@ app.get("/health", (_, res) => {
   });
 });
 
-// GSE: poll every 30 min during market hours
-cron.schedule("*/30 * * * *", async () => {
+// GSE: poll every 60 min during market hours
+cron.schedule("0 * * * *", async () => {
   if (!isGseOpen()) {
     console.log("[cron] GSE is closed. Skipping fetch.");
     return;
@@ -51,8 +51,9 @@ cron.schedule("*/30 * * * *", async () => {
 });
 
 
-// NGX: poll every 30 min during market hours (offset by 1 min to avoid overlap)
-cron.schedule("1-56/30 * * * *", async () => {
+
+// NGX: poll every 60 min during market hours (offset by 5 min to avoid overlap)
+cron.schedule("5 * * * *", async () => {
   if (!isNgxOpen()) {
     console.log("[cron] NGX is closed. Skipping fetch.");
     return;
@@ -61,6 +62,7 @@ cron.schedule("1-56/30 * * * *", async () => {
   try { await fetchNgxSnapshot(); console.log("[cron] NGX updated."); }
   catch (e) { console.error("[cron] NGX failed:", e); }
 });
+
 
 
 // Startup with retries

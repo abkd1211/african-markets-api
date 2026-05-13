@@ -23,16 +23,26 @@ interface KwayisiLiveTicker {
   volume: number;
 }
 
+function buildProxyUrl(targetUrl: string): string {
+  const apiKey = process.env.SCRAPER_API_KEY;
+  if (!apiKey) {
+    throw new Error("SCRAPER_API_KEY is not defined in environment variables");
+  }
+  return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+}
+
 export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
+
 
   console.log("[GSE] Starting fetch...");
   try {
     const gotScraping = await gotScrapingPromise;
     const targetUrl = `${BASE}/live`;
-    const response = await gotScraping.get(targetUrl, {
+    const response = await gotScraping.get(buildProxyUrl(targetUrl), {
       responseType: "json",
-      timeout: { request: 60000 },
+      timeout: { request: 30000 }, // Shorter timeout for better UX
     });
+
 
     
     const data = response.body as KwayisiLiveTicker[];
@@ -59,9 +69,15 @@ export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
     return snapshot;
   } catch (err) {
     console.error("[GSE] Fetch failed:", err instanceof Error ? err.message : String(err));
+    const cached = cache.getGseSnapshot();
+    if (cached) {
+      console.log("[GSE] Returning stale snapshot on failure");
+      return cached;
+    }
     throw err;
   }
 }
+
 
 interface KwayisiEquity {
   name: string;
@@ -84,29 +100,35 @@ export async function fetchGseProfile(symbol: string): Promise<CompanyProfile> {
 
   const gotScraping = await gotScrapingPromise;
   const targetUrl = `${BASE}/equities/${symbol.toLowerCase()}`;
-  const response = await gotScraping.get(targetUrl, {
-      responseType: "json",
-      timeout: { request: 60000 },
-  });
+  try {
+    const response = await gotScraping.get(buildProxyUrl(targetUrl), {
+        responseType: "json",
+        timeout: { request: 30000 },
+    });
+    const data = response.body as KwayisiEquity;
 
-  const data = response.body as KwayisiEquity;
+    const profile: CompanyProfile = {
+      symbol: data.name,
+      exchange: "GSE",
+      price: data.price,
+      market_cap: data.capital ?? null,
+      eps: data.eps ?? null,
+      dps: data.dps ?? null,
+      shares_outstanding: data.shares ?? null,
+      company: {
+        full_name: data.company.name,
+        sector: data.company.sector ?? null,
+        industry: data.company.industry ?? null,
+        website: data.company.website ?? null,
+      },
+    };
 
-  const profile: CompanyProfile = {
-    symbol: data.name,
-    exchange: "GSE",
-    price: data.price,
-    market_cap: data.capital ?? null,
-    eps: data.eps ?? null,
-    dps: data.dps ?? null,
-    shares_outstanding: data.shares ?? null,
-    company: {
-      full_name: data.company.name,
-      sector: data.company.sector ?? null,
-      industry: data.company.industry ?? null,
-      website: data.company.website ?? null,
-    },
-  };
-
-  cache.setProfile(symbol, profile);
-  return profile;
-}
+    cache.setProfile(symbol, profile);
+    return profile;
+  } catch (err) {
+    console.error(`[GSE] Profile fetch failed for ${symbol}:`, err instanceof Error ? err.message : String(err));
+    const cached = cache.getProfile(symbol);
+    if (cached) return cached;
+    throw err;
+  }
+}
