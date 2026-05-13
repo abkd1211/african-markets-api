@@ -11,9 +11,13 @@ import { cache } from "../cache/market.cache";
 const AF_BASE = "https://afx.kwayisi.org";
 
 function buildProxyUrl(targetUrl: string): string {
-  const apiKey = process.env.SCRAPER_API_KEY || "7e922c59c968b2133b7c574bc8af117e";
+  const apiKey = process.env.SCRAPER_API_KEY;
+  if (!apiKey) {
+    throw new Error("SCRAPER_API_KEY is not defined in environment variables");
+  }
   return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
 }
+
 
 
 export function isNgxOpen(): boolean {
