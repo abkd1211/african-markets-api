@@ -75,6 +75,11 @@ npm run dev
 - **API:** [http://localhost:3000](http://localhost:3000)
 - **Web:** [http://localhost:3001](http://localhost:3001)
 
+### Production Deployments
+- **Frontend Dashboard:** [https://african-markets.vercel.app](https://african-markets.vercel.app)
+- **Backend API:** [https://african-markets-api-muuy.onrender.com](https://african-markets-api-muuy.onrender.com)
+
+
 ---
 
 ## 🗺 Market Support
