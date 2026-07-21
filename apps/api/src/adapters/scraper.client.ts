@@ -29,36 +29,23 @@ function isBlockedProxyResponse(status: number, body: string): boolean {
 }
 
 async function fetchDirect(
+  gotScraping: any,
   targetUrl: string,
   responseType: "text" | "json"
 ): Promise<{ statusCode: number; body: string | unknown }> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-
-    const response = await globalThis.fetch(targetUrl, {
-      method: "GET",
+    const response = await gotScraping.get(targetUrl, {
+      timeout: { request: 30000 },
+      responseType,
       headers: {
         "User-Agent": DEFAULT_USER_AGENT,
         Accept: "*/*",
         "Accept-Language": "en-US,en;q=0.9",
         Referer: targetUrl,
       },
-      signal: controller.signal,
     });
 
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      const bodyText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${bodyText.slice(0, 200)}`);
-    }
-
-    if (responseType === "json") {
-      return { statusCode: response.status, body: await response.json() };
-    }
-
-    return { statusCode: response.status, body: await response.text() };
+    return response;
   } catch (err: any) {
     throw new Error(`direct fetch failed: ${err?.message ?? String(err)}`);
   }
@@ -111,7 +98,7 @@ export async function fetchUrlWithScraperFallback(
   }
 
   try {
-    return await fetchDirect(targetUrl, responseType);
+    return await fetchDirect(gotScraping, targetUrl, responseType);
   } catch (err: any) {
     throw new Error(
       `[scraper] Direct fetch failed: ${err?.message ?? String(err)}; proxy last error: ${lastProxyError?.message ?? "none"}`
