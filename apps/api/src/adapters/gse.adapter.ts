@@ -1,6 +1,6 @@
-const gotScrapingPromise = new Function("return import('got-scraping')")().then((m: any) => m.gotScraping);
 import { MarketSnapshot, Ticker, CompanyProfile } from "../types/market.types";
 import { cache } from "../cache/market.cache";
+import { fetchUrlWithScraperFallback } from "./scraper.client";
 
 const BASE = process.env.GSE_API_BASE || "https://dev.kwayisi.org/apis/gse";
 
@@ -23,28 +23,11 @@ interface KwayisiLiveTicker {
   volume: number;
 }
 
-function buildProxyUrl(targetUrl: string): string {
-  const apiKey = process.env.SCRAPER_API_KEY;
-  if (!apiKey) {
-    throw new Error("SCRAPER_API_KEY is not defined in environment variables");
-  }
-  return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
-}
-
 export async function fetchGseSnapshot(): Promise<MarketSnapshot> {
-
-
   console.log("[GSE] Starting fetch...");
   try {
-    const gotScraping = await gotScrapingPromise;
     const targetUrl = `${BASE}/live`;
-    const response = await gotScraping.get(buildProxyUrl(targetUrl), {
-      responseType: "json",
-      timeout: { request: 30000 }, // Shorter timeout for better UX
-    });
-
-
-    
+    const response = await fetchUrlWithScraperFallback(targetUrl, "json");
     const data = response.body as KwayisiLiveTicker[];
     console.log(`[GSE] Fetched ${data.length} tickers`);
     
@@ -98,13 +81,9 @@ export async function fetchGseProfile(symbol: string): Promise<CompanyProfile> {
   const cached = cache.getProfile(symbol);
   if (cached) return cached;
 
-  const gotScraping = await gotScrapingPromise;
   const targetUrl = `${BASE}/equities/${symbol.toLowerCase()}`;
   try {
-    const response = await gotScraping.get(buildProxyUrl(targetUrl), {
-        responseType: "json",
-        timeout: { request: 30000 },
-    });
+    const response = await fetchUrlWithScraperFallback(targetUrl, "json");
     const data = response.body as KwayisiEquity;
 
     const profile: CompanyProfile = {
@@ -131,4 +110,4 @@ export async function fetchGseProfile(symbol: string): Promise<CompanyProfile> {
     if (cached) return cached;
     throw err;
   }
-}
+}

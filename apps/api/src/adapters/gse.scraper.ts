@@ -1,17 +1,9 @@
-const gotScrapingPromise = new Function("return import('got-scraping')")().then((m: any) => m.gotScraping);
 import * as cheerio from "cheerio";
 import { HistoricalData, HistoricalDataPoint } from "../types/market.types";
 import { cache } from "../cache/market.cache";
+import { fetchUrlWithScraperFallback } from "./scraper.client";
 
 const AF_BASE = "https://afx.kwayisi.org";
-
-function buildProxyUrl(targetUrl: string): string {
-  const apiKey = process.env.SCRAPER_API_KEY;
-  if (!apiKey) {
-    throw new Error("SCRAPER_API_KEY is not defined in environment variables");
-  }
-  return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
-}
 
 
 
@@ -21,12 +13,11 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
 
   // Primary: chart JS endpoint or embedded JS for index
   try {
-    const gotScraping = await gotScrapingPromise;
     const slug = symbol.toLowerCase() === "gse-ci" ? "" : symbol.toLowerCase();
     const chartUrl = `${AF_BASE}/chart/gse${slug ? "/" + slug : ""}`;
     
-    const response = await gotScraping.get(buildProxyUrl(chartUrl), { timeout: { request: 60000 } });
-    const js = response.body;
+    const response = await fetchUrlWithScraperFallback(chartUrl, "text");
+    const js = String(response.body);
 
     const points = parseHighchartsScript(js);
     if (points.length > 0) {
@@ -50,10 +41,9 @@ export async function fetchGseHistory(symbol: string): Promise<HistoricalData> {
 
   // Fallback: scrape data-hist table
   try {
-    const gotScraping = await gotScrapingPromise;
     const pageUrl = `${AF_BASE}/gse/${symbol.toLowerCase()}.html`;
-    const response = await gotScraping.get(buildProxyUrl(pageUrl), { timeout: { request: 60000 } });
-    const html = response.body;
+    const response = await fetchUrlWithScraperFallback(pageUrl, "text");
+    const html = String(response.body);
 
     const $ = cheerio.load(html);
     const points: HistoricalDataPoint[] = [];

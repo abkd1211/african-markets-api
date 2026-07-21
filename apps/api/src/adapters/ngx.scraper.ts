@@ -1,4 +1,3 @@
-const gotScrapingPromise = new Function("return import('got-scraping')")().then((m: any) => m.gotScraping);
 import * as cheerio from "cheerio";
 import {
   NgxSnapshot,
@@ -7,16 +6,9 @@ import {
   HistoricalDataPoint,
 } from "../types/market.types";
 import { cache } from "../cache/market.cache";
+import { fetchUrlWithScraperFallback } from "./scraper.client";
 
 const AF_BASE = "https://afx.kwayisi.org";
-
-function buildProxyUrl(targetUrl: string): string {
-  const apiKey = process.env.SCRAPER_API_KEY;
-  if (!apiKey) {
-    throw new Error("SCRAPER_API_KEY is not defined in environment variables");
-  }
-  return `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
-}
 
 
 
@@ -33,12 +25,11 @@ export async function fetchNgxSnapshot(): Promise<NgxSnapshot> {
 
   console.log("[NGX] Starting fetch...");
   try {
-    const gotScraping = await gotScrapingPromise;
-    const page1 = await gotScraping.get(buildProxyUrl(`${AF_BASE}/ngx/`), { timeout: { request: 60000 } });
-    await new Promise(r => setTimeout(r, 1500)); 
-    const page2 = await gotScraping.get(buildProxyUrl(`${AF_BASE}/ngx/?page=2`), { timeout: { request: 60000 } });
+    const page1 = await fetchUrlWithScraperFallback(`${AF_BASE}/ngx/`, "text");
+    await new Promise((r) => setTimeout(r, 1500));
+    const page2 = await fetchUrlWithScraperFallback(`${AF_BASE}/ngx/?page=2`, "text");
 
-    const html = page1.body + page2.body;
+    const html = String(page1.body) + String(page2.body);
     const $ = cheerio.load(html);
     const tickers: NgxTicker[] = [];
 
@@ -95,12 +86,11 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   if (cached) return cached;
 
   try {
-    const gotScraping = await gotScrapingPromise;
     const slug = symbol.toLowerCase() === "asi" ? "" : symbol.toLowerCase();
     const chartUrl = `${AF_BASE}/chart/ngx${slug ? "/" + slug : ""}`;
     
-    const response = await gotScraping.get(buildProxyUrl(chartUrl), { timeout: { request: 60000 } });
-    const js = response.body;
+    const response = await fetchUrlWithScraperFallback(chartUrl, "text");
+    const js = String(response.body);
 
     const points = parseHighchartsScript(js);
     if (points.length > 0) {
@@ -120,10 +110,9 @@ export async function fetchNgxHistory(symbol: string): Promise<HistoricalData> {
   }
 
   try {
-    const gotScraping = await gotScrapingPromise;
     const pageUrl = `${AF_BASE}/ngx/${symbol.toLowerCase()}.html`;
-    const response = await gotScraping.get(buildProxyUrl(pageUrl), { timeout: { request: 60000 } });
-    const html = response.body;
+    const response = await fetchUrlWithScraperFallback(pageUrl, "text");
+    const html = String(response.body);
 
     const $ = cheerio.load(html);
     const points: HistoricalDataPoint[] = [];
